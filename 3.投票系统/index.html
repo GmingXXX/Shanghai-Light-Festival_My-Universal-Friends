@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>宇宙朋友101：为你心动的TA投票！</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preload" href="style.css" as="style" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="title-wrap">
+      <h1>宇宙朋友101：为你心动的TA投票！</h1>
+      <p class="subtitle">欢迎来到宇宙朋友画廊！请为你最喜欢的 1-3 位宇宙朋友投上宝贵的一票。</p>
+    </div>
+    <div class="header-actions">
+      <button id="btn-refresh" class="btn btn-secondary">刷新视频</button>
+      <button id="btn-stats" class="btn btn-secondary">查看票数统计</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="video-grid" class="video-grid" aria-live="polite" aria-busy="true"></div>
+  </main>
+
+  <footer class="app-footer">
+    <button id="btn-submit" class="btn btn-primary" disabled>
+      确认提交投票（已选 0/3）
+    </button>
+  </footer>
+
+  <!-- 统计模态框 -->
+  <div id="stats-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
+    <div class="modal-backdrop" data-close="1"></div>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 id="stats-title">票数统计</h2>
+        <button class="btn btn-icon" id="btn-close-stats" aria-label="关闭统计">✕</button>
+      </header>
+      <section class="modal-body">
+        <div id="stats-table-wrap" class="table-wrap">加载中…</div>
+      </section>
+      <footer class="modal-footer">
+        <button id="btn-export-excel" class="btn btn-secondary">导出为Excel</button>
+        <button id="btn-reset" class="btn btn-danger">重置投票记录</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="script.js"></script>
+</body>
+</html>

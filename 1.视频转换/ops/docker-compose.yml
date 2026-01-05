@@ -1,0 +1,117 @@
+version: '3.8'
+
+services:
+  # Redis 服务
+  redis:
+    image: redis:7-alpine
+    container_name: alphavid-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+  # MinIO 对象存储（开发环境）
+  minio:
+    image: minio/minio:latest
+    container_name: alphavid-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    command: server /data --console-address ":9001"
+    restart: unless-stopped
+
+  # 后端 API 服务
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: alphavid-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app
+      - api_data:/data
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PROVIDER=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - S3_BUCKET=alphavid-converter
+      - LOCAL_STORAGE_ROOT=/data
+      - CORS_ORIGINS=http://localhost:5173
+    depends_on:
+      - redis
+      - minio
+    restart: unless-stopped
+    command: python -m app.app
+
+  # Celery Worker 服务
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: alphavid-worker
+    volumes:
+      - ../backend:/app
+      - worker_data:/data
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PROVIDER=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - S3_BUCKET=alphavid-converter
+      - LOCAL_STORAGE_ROOT=/data
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+    depends_on:
+      - redis
+      - minio
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=2
+
+  # Celery Beat 定时任务（可选）
+  beat:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: alphavid-beat
+    volumes:
+      - ../backend:/app
+      - beat_data:/data
+    environment:
+      - FLASK_ENV=development
+      - REDIS_URL=redis://redis:6379/0
+      - STORAGE_PROVIDER=minio
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_SECURE=false
+      - S3_BUCKET=alphavid-converter
+    depends_on:
+      - redis
+      - minio
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+
+volumes:
+  redis_data:
+  minio_data:
+  api_data:
+  worker_data:
+  beat_data:
+
+networks:
+  default:
+    name: alphavid-network

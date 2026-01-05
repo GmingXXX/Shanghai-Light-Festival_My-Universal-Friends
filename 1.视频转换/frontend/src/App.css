@@ -1,0 +1,158 @@
+/* 主应用样式 */
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 0 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px 0;
+}
+
+.app-content {
+  background: #f5f5f5;
+  padding: 24px 20px;
+}
+
+.content-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  padding: 32px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.action-buttons {
+  text-align: center;
+  margin: 24px 0;
+}
+
+.file-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.file-upload-container .ant-upload-drag {
+  background: #fafafa;
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.file-upload-container .ant-upload-drag:hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+.file-upload-container .ant-upload-drag.ant-upload-drag-hover {
+  border-color: #1890ff;
+  background: #f0f8ff;
+}
+
+.app-footer {
+  background: white;
+  border-top: 1px solid #f0f0f0;
+  padding: 16px 20px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .app-header {
+    padding: 0 16px;
+  }
+  
+  .header-content {
+    padding: 16px 0;
+  }
+  
+  .app-content {
+    padding: 16px;
+  }
+  
+  .content-container {
+    padding: 20px 16px;
+  }
+  
+  .action-buttons .ant-space {
+    flex-wrap: wrap;
+  }
+}
+
+/* 进度条样式 */
+.ant-progress-line {
+  margin-bottom: 8px;
+}
+
+/* 待处理状态进度条动画 */
+.pending-progress .ant-progress-bg {
+  background: linear-gradient(90deg, #faad14 0%, #fadb14 50%, #faad14 100%);
+  background-size: 200% 100%;
+  animation: pendingAnimation 2s ease-in-out infinite;
+}
+
+@keyframes pendingAnimation {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* 运行中状态进度条动画 */
+.running-progress .ant-progress-bg {
+  background: linear-gradient(90deg, #1890ff 0%, #40a9ff 50%, #1890ff 100%);
+  background-size: 200% 100%;
+  animation: runningAnimation 1.5s ease-in-out infinite;
+}
+
+@keyframes runningAnimation {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* 卡片样式 */
+.ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+}
+
+.ant-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 标签样式 */
+.ant-tag {
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* 按钮样式 */
+.ant-btn {
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+/* 模态框视频预览样式 */
+.ant-modal-body video {
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* 颜色选择器样式 */
+.ant-color-picker {
+  border-radius: 4px;
+}

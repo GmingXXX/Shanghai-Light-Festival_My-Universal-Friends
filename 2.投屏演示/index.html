@@ -1,0 +1,2454 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宇宙朋友动态壁纸</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+
+        /* 背景视频样式 */
+        #background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        /* 画布样式 */
+        #creature-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            cursor: crosshair;
+        }
+
+        /* 上传按钮样式 */
+        #upload-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        #upload-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* 拖拽时的样式 */
+        body.drag-over {
+            background: rgba(0, 150, 255, 0.1);
+        }
+
+        body.drag-over #upload-button {
+            background: rgba(0, 150, 255, 0.5);
+            border-color: rgba(0, 150, 255, 1);
+            color: white;
+            transform: scale(1.2);
+        }
+
+        /* 加载提示 */
+        #loading-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 18px;
+            z-index: 200;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        /* 信息面板 */
+        #info-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            backdrop-filter: blur(5px);
+        }
+
+        /* 帮助面板 */
+        #help-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            backdrop-filter: blur(5px);
+            max-width: 300px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #help-panel.show {
+            opacity: 1;
+        }
+
+        /* 性能警告 */
+        .performance-warning {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 165, 0, 0.9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 300;
+            text-align: center;
+            display: none;
+        }
+
+        /* 默认隐藏控件：仅展示效果画面 */
+        #upload-button,
+        #info-panel {
+            display: none;
+        }
+
+        /* 帮助面板中的控件布局与样式覆盖 */
+        #help-panel .in-help {
+            position: static !important;
+            top: auto; left: auto; right: auto; bottom: auto;
+            z-index: auto;
+            transform: none;
+        }
+        #help-panel #upload-button.in-help {
+            display: flex;
+            width: 40px;
+            height: 40px;
+            margin-top: 10px;
+        }
+        #help-panel #info-panel.in-help {
+            display: block;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 背景视频 -->
+    <video id="background-video" autoplay loop muted>
+        <source src="background/UNIVERSE.mp4" type="video/mp4">
+        您的浏览器不支持视频播放
+    </video>
+
+    <!-- 核心画布 -->
+    <canvas id="creature-canvas"></canvas>
+    
+    <!-- 隐藏的文件上传输入 -->
+    <input type="file" id="video-uploader" multiple accept=".webm" style="display: none;">
+    
+    <!-- 上传按钮（默认隐藏，移动到帮助面板显示） -->
+    <div id="upload-button" title="点击或拖拽webm文件到此处添加宇宙朋友">+</div>
+
+    <!-- 加载提示 -->
+    <div id="loading-indicator">正在加载视频...</div>
+
+    <!-- 信息面板（默认隐藏，移动到帮助面板显示） -->
+    <div id="info-panel">
+        <div>宇宙朋友数量: <span id="creature-count">0</span></div>
+        <div>FPS: <span id="fps-counter">0</span></div>
+        <div>文件夹监听: <span id="monitor-status">开启</span></div>
+        <div style="margin-top: 5px; font-size: 11px; opacity: 0.7;">按 H 键显示帮助 | 按 F 键立即检测 | 按 C 键清除已删除</div>
+    </div>
+
+    <!-- 手动添加文件输入框 -->
+    <div id="manual-add-panel" style="position: fixed; top: 80px; left: 20px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; color: white; font-size: 12px; z-index: 100; display: none;">
+        <div style="margin-bottom: 5px;">输入新文件名（不含路径）:</div>
+        <input type="text" id="manual-filename" placeholder="例如: test_1.webm" style="width: 200px; padding: 3px; margin-right: 5px;" onkeypress="if(event.key==='Enter') loadManualFile()">
+        <button onclick="loadManualFile()" style="padding: 3px 8px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer;">加载</button>
+        <button onclick="hideManualAddPanel()" style="padding: 3px 8px; background: #666; color: white; border: none; border-radius: 3px; cursor: pointer; margin-left: 5px;">取消</button>
+    </div>
+
+    <!-- 帮助面板 -->
+    <div id="help-panel">
+        <div><strong>宇宙朋友动态壁纸 - 操作说明</strong></div>
+        <div style="margin-top: 10px;">
+            <div>• 点击右上角 + 按钮或拖拽文件上传 webm 视频</div>
+            <div>• 支持透明背景的 webm 格式视频文件</div>
+            <div>• 🚀 自动监听：每3秒扫描，可在此处设置自定义间隔</div>
+            <div>• 📂 检测范围：1-999.webm, a-z.webm, Character_00001-00100_transparent.webm</div>
+            <div>• 最多同时显示 100 个宇宙朋友</div>
+            <div>• 单个文件大小限制 50MB</div>
+            <div>• 按 H 键显示/隐藏此帮助</div>
+            <div>• 按 M 键开启/关闭文件夹监听</div>
+            <div>• 按 F 键立即检测新增视频文件</div>
+            <div>• 按 C 键清除已删除的文件对应的宇宙朋友</div>
+        </div>
+        <div style="margin-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); padding-top: 10px;">
+            <div style="margin-bottom: 6px; opacity: 0.9;">界面控件：</div>
+            <!-- 将上传按钮与信息面板嵌入帮助面板 -->
+            <div id="help-controls" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <!-- upload-button 与 info-panel 将在脚本中移动到这里 -->
+            </div>
+            <div id="monitor-settings" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div style="opacity:0.9;">监听间隔(秒):</div>
+                <input type="number" id="monitor-interval-input" min="1" max="60" step="1" value="3" style="width: 60px; padding: 3px;">
+                <button id="apply-interval-btn" style="padding: 3px 8px; background: #00aa88; color: white; border: none; border-radius: 3px; cursor: pointer;">应用</button>
+                <div id="current-interval-text" style="opacity: 0.8;">当前: 3s</div>
+            </div>
+            <div id="limit-settings" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <div style="opacity:0.9;">页面视频上限:</div>
+                <input type="number" id="creature-limit-input" min="1" max="100" step="1" value="50" style="width: 60px; padding: 3px;">
+                <button id="apply-limit-btn" style="padding: 3px 8px; background: #ffaa00; color: white; border: none; border-radius: 3px; cursor: pointer;">应用</button>
+                <div id="current-limit-text" style="opacity: 0.8;">当前: 50</div>
+            </div>
+            <div id="fs-access-controls" style="margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <button id="grant-dir-access-btn" style="padding: 3px 8px; background: #8844ff; color: white; border: none; border-radius: 3px; cursor: pointer;">授权监控 video 文件夹</button>
+                <div id="dir-access-status" style="opacity: 0.8;">目录访问：未授权</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 性能警告 -->
+    <div id="performance-warning" class="performance-warning">
+        <div><strong>性能警告</strong></div>
+        <div style="margin-top: 10px;">
+            检测到性能下降 (FPS < 30)，建议减少宇宙朋友数量以获得更好的体验。
+        </div>
+        <button onclick="this.parentElement.style.display='none'" style="margin-top: 10px; padding: 5px 10px; background: white; color: orange; border: none; border-radius: 5px; cursor: pointer;">知道了</button>
+    </div>
+
+    <script>
+        // 全局变量
+        let canvas, ctx;
+        let creatures = [];
+        let animationId;
+        let lastTime = 0;
+        let frameCount = 0;
+        let lastFpsUpdate = 0;
+        let globalTime = 0; // rAF 提供的时间（秒）
+        
+        // 文件夹监听相关变量
+        let knownVideoFiles = new Set(); // 存储已知的视频文件
+        let videoMonitorInterval = null; // 监听定时器
+        let isMonitoring = false; // 监听状态（默认关闭，改为手动模式）
+        let userAddedFiles = new Set(); // 用户手动添加的文件列表
+        let monitorIntervalMs = 3000; // 默认3秒监听间隔
+        const MONITOR_INTERVAL_STORAGE_KEY = 'monitorIntervalSeconds';
+        let loadedFilenames = new Set(); // 已加载的文件名，用于去重与清理
+        let loadingFilenames = new Set(); // 正在加载的文件名，避免并发重复
+        let playbackWatchdogInterval = null; // 播放守护定时器
+        let playbackGuardsInitialized = false; // 全局可见性守护是否初始化
+        let dirHandle = null; // File System Access API 目录句柄
+        let useFsAccess = false; // 是否启用目录直读模式
+        const LOOP_WRAP_THRESHOLD = 0.25; // 距尾帧阈值（秒），提前重播避免停顿（提升容错）
+        const SHOW_PERFORMANCE_WARNING = false; // 关闭性能警告弹窗
+        const STALL_NUDGE_SECONDS = 1.5; // 判定卡住的阈值（秒）
+        const NUDGE_JUMP_SECONDS = 0.05; // 轻推播放的跳转秒数
+        
+        // 页面视频上限设置
+        let creatureLimit = 50; // 默认上限 50
+        const CREATURE_LIMIT_STORAGE_KEY = 'creatureLimit';
+        let isPruningCreatures = false; // 防止递归裁剪
+
+        // 初始化
+        function init() {
+            canvas = document.getElementById('creature-canvas');
+            ctx = canvas.getContext('2d');
+            
+            // 设置画布大小
+            resizeCanvas();
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 设置文件上传事件
+            setupFileUpload();
+            
+            // 设置键盘快捷键
+            setupKeyboardShortcuts();
+            
+            // 设置画布点击事件（用于触发视频播放）
+            setupCanvasClick();
+            
+            // 开始动画循环
+            animate();
+            
+            // 初始化监听间隔与设置UI
+            loadMonitorIntervalFromStorage();
+            setupMonitorControlsUI();
+            // 初始化页面视频上限设置
+            loadCreatureLimitFromStorage();
+            setupLimitControlsUI();
+            setupGlobalPlaybackGuards();
+            
+            // 初始化：若授权了目录，则采用目录枚举初始化；否则执行轻量扫描
+            if (useFsAccess && dirHandle) {
+                enumerateDirectoryAndLoad();
+            } else {
+                performInitialScan();
+            }
+            
+            // 默认开启自动监听
+            startVideoMonitoring();
+            updateMonitorStatus();
+            
+            // 检测协议并给出相应提示
+            checkProtocolAndNotify();
+            
+            console.log('宇宙朋友动态壁纸初始化完成 - 自动监听模式');
+        }
+
+        // 设置键盘快捷键 - 性能优化版本
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // 防抖处理，避免快速按键导致的重复执行
+                if (e.repeat) return;
+                
+                switch(e.key.toLowerCase()) {
+                    case 'h':
+                        toggleHelp();
+                        break;
+                    case 'c':
+                        // 异步执行，避免阻塞UI
+                        setTimeout(() => cleanupDeletedFiles(), 0);
+                        break;
+                    case 'r':
+                        resetCanvas();
+                        break;
+                    case 'p':
+                        playAllVideos();
+                        break;
+                    case 'm':
+                        toggleVideoMonitoring();
+                        break;
+                    case 'f':
+                        // 异步执行，避免阻塞UI
+                        setTimeout(() => manualRefreshVideoFolder(), 0);
+                        break;
+                    case 'a':
+                        showManualAddPanel();
+                        break;
+                    case 'u':
+                        // 异步执行，避免阻塞UI
+                        setTimeout(() => updateFileList(), 0);
+                        break;
+                    case 'g':
+                        // G键：快速弹出目录授权
+                        setTimeout(() => requestDirectoryAccess(), 0);
+                        break;
+                    case 'escape':
+                        hideHelp();
+                        hideManualAddPanel();
+                        break;
+                    case 'd':
+                        debugCreatures();
+                        break;
+                    case 't':
+                        // T键：测试检测功能
+                        setTimeout(() => testDetection(), 0);
+                        break;
+                    case 's':
+                        // S键：强制全面扫描
+                        setTimeout(() => forceFullScan(), 0);
+                        break;
+                }
+            });
+        }
+
+        // 播放所有视频
+        function playAllVideos() {
+            creatures.forEach(creature => {
+                if (creature.video.paused) {
+                    creature.video.play().catch(e => {
+                        console.warn('无法播放视频:', e);
+                    });
+                }
+            });
+            console.log('尝试播放所有视频');
+        }
+
+        // 设置画布点击事件
+        function setupCanvasClick() {
+            canvas.addEventListener('click', () => {
+                playAllVideos();
+            });
+        }
+
+        // 切换帮助面板显示
+        function toggleHelp() {
+            const helpPanel = document.getElementById('help-panel');
+            helpPanel.classList.toggle('show');
+            relocateControls(helpPanel.classList.contains('show'));
+        }
+
+        // 隐藏帮助面板
+        function hideHelp() {
+            const helpPanel = document.getElementById('help-panel');
+            helpPanel.classList.remove('show');
+            relocateControls(false);
+        }
+
+        // 将上传按钮与信息面板移动到帮助面板中/还原
+        function relocateControls(showing) {
+            const helpControls = document.getElementById('help-controls');
+            const uploadBtn = document.getElementById('upload-button');
+            const infoPanel = document.getElementById('info-panel');
+            if (!helpControls || !uploadBtn || !infoPanel) return;
+
+            if (showing) {
+                if (!helpControls.contains(uploadBtn)) {
+                    uploadBtn.classList.add('in-help');
+                    helpControls.appendChild(uploadBtn);
+                }
+                if (!helpControls.contains(infoPanel)) {
+                    infoPanel.classList.add('in-help');
+                    helpControls.appendChild(infoPanel);
+                }
+                // 显示帮助内的控件
+                uploadBtn.style.display = 'flex';
+                infoPanel.style.display = 'block';
+                // 绑定授权按钮事件
+                const grantBtn = document.getElementById('grant-dir-access-btn');
+                if (grantBtn && !grantBtn.dataset.bound) {
+                    grantBtn.addEventListener('click', requestDirectoryAccess);
+                    grantBtn.dataset.bound = '1';
+                }
+            } else {
+                // 隐藏控件（不再占据画面）
+                uploadBtn.style.display = 'none';
+                infoPanel.style.display = 'none';
+            }
+        }
+
+        // 清除所有宇宙朋友
+        function clearAllCreatures() {
+            if (creatures.length === 0) return;
+            
+            if (confirm(`确定要清除所有 ${creatures.length} 个宇宙朋友吗？`)) {
+                // 释放视频资源
+                creatures.forEach(creature => {
+                    if (creature.video.src) {
+                        URL.revokeObjectURL(creature.video.src);
+                    }
+                });
+                
+                creatures = [];
+                updateCreatureCount();
+                console.log('已清除所有宇宙朋友');
+            }
+        }
+
+        // 重置画布
+        function resetCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            console.log('画布已重置');
+        }
+
+        // 调整画布大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        // 海洋生物类
+        class Creature {
+            constructor(videoElement) {
+                this.video = videoElement;
+                
+                // 根据视频原始尺寸计算显示尺寸，但限制在合理范围内
+                const aspectRatio = videoElement.videoWidth / videoElement.videoHeight;
+                const baseSize = Math.random() * 104 + 78; // 78-182px（较原来上/下限+30%）
+                this.width = baseSize;
+                this.height = baseSize / aspectRatio;
+                
+                // 限制高度，避免过高或过宽的视频
+                if (this.height > 260) {
+                    this.height = 260;
+                    this.width = this.height * aspectRatio;
+                }
+                if (this.width > 390) {
+                    this.width = 390;
+                    this.height = this.width / aspectRatio;
+                }
+                
+                // 随机初始位置（确保完全在画布内）
+                this.x = Math.random() * Math.max(0, canvas.width - this.width);
+                this.y = Math.random() * Math.max(0, canvas.height - this.height);
+                
+                // 极其缓慢的随机速度，模拟海洋生物的悠闲游动（整体减半）
+                const speedFactor = 0.15; // 原 0.3
+                this.dx = (Math.random() - 0.5) * speedFactor;
+                this.dy = (Math.random() - 0.5) * speedFactor;
+                
+                // 确保最小速度，避免静止（更小）
+                const minSpeed = 0.025; // 原 0.05
+                if (Math.abs(this.dx) < minSpeed) this.dx = this.dx >= 0 ? minSpeed : -minSpeed;
+                if (Math.abs(this.dy) < minSpeed) this.dy = this.dy >= 0 ? minSpeed : -minSpeed;
+                
+                // 添加一些随机性：偶尔改变方向的计时器
+                this.directionChangeTimer = Math.random() * 400 + 400; // 400-800帧后改变方向
+                this.directionChangeCounter = 0;
+                
+                // 透明度（可选：添加一些视觉变化）
+                this.opacity = 0.7 + Math.random() * 0.2; // 0.7-0.9（整体更低以配合下限0.30）
+
+                // 轻微动态变换参数（正弦 LFO）
+                this.scalePhase = Math.random() * Math.PI * 2;
+                this.scaleSpeed = 0.2 + Math.random() * 0.25; // 0.2 - 0.45（更从容）
+                this.scaleAmp = 0.25 + Math.random() * 0.2; // 25% - 45%
+
+                this.rotatePhase = Math.random() * Math.PI * 2;
+                this.rotateSpeed = 0.125 + Math.random() * 0.15; // 0.125 - 0.275
+                this.rotateAmp = (Math.PI / 180) * (1 + Math.random() * 2); // 1° - 3°
+
+                this.alphaPhase = Math.random() * Math.PI * 2;
+                this.alphaSpeed = 0.4 + Math.random() * 0.6; // 0.4 - 1.0（减半）
+                this.alphaAmp = 0.0; // 不直接使用对称幅度
+                // 非对称透明度幅度：降低整体幅度，配合下限0.30
+                this.alphaAmpPos = 0.10 + Math.random() * 0.15; // 0.10 - 0.25
+                this.alphaAmpNeg = 0.25 + Math.random() * 0.25; // 0.25 - 0.50
+            }
+
+            update() {
+                // 更新位置
+                this.x += this.dx;
+                this.y += this.dy;
+
+                // 方向改变逻辑：模拟海洋生物的自然游动
+                this.directionChangeCounter++;
+                if (this.directionChangeCounter >= this.directionChangeTimer) {
+                    // 轻微改变方向，而不是完全随机（更小幅度）
+                    const changeIntensity = 0.05; // 原 0.1
+                    this.dx += (Math.random() - 0.5) * changeIntensity;
+                    this.dy += (Math.random() - 0.5) * changeIntensity;
+                    
+                    // 限制最大速度（更低上限）
+                    const maxSpeed = 0.4; // 原 0.8
+                    if (Math.abs(this.dx) > maxSpeed) this.dx = this.dx > 0 ? maxSpeed : -maxSpeed;
+                    if (Math.abs(this.dy) > maxSpeed) this.dy = this.dy > 0 ? maxSpeed : -maxSpeed;
+                    
+                    // 重置计时器
+                    this.directionChangeTimer = Math.random() * 400 + 600; // 600-1000帧
+                    this.directionChangeCounter = 0;
+                }
+
+                // 边界碰撞检测和反弹
+                if (this.x <= 0) {
+                    this.dx = Math.abs(this.dx);
+                    this.x = 0;
+                } else if (this.x + this.width >= canvas.width) {
+                    this.dx = -Math.abs(this.dx);
+                    this.x = canvas.width - this.width;
+                }
+                
+                if (this.y <= 0) {
+                    this.dy = Math.abs(this.dy);
+                    this.y = 0;
+                } else if (this.y + this.height >= canvas.height) {
+                    this.dy = -Math.abs(this.dy);
+                    this.y = canvas.height - this.height;
+                }
+            }
+
+            draw() {
+                // 更宽松的绘制条件：只要视频有数据就尝试绘制
+                if (this.video.readyState >= 1) { // HAVE_METADATA 或更高
+                    try {
+                        // 保存当前上下文状态
+                        ctx.save();
+
+                        // 基于全局时间的轻微正弦变换
+                        const t = globalTime; // 秒
+                        const scale = 1 + this.scaleAmp * Math.sin(t * this.scaleSpeed + this.scalePhase);
+                        const rotation = this.rotateAmp * Math.sin(t * this.rotateSpeed + this.rotatePhase);
+                        const s = Math.sin(t * this.alphaSpeed + this.alphaPhase);
+                        const alphaMod = s >= 0 ? s * this.alphaAmpPos : s * this.alphaAmpNeg;
+                        const alpha = Math.max(0.30, Math.min(1, this.opacity + alphaMod));
+
+                        // 设置透明度
+                        ctx.globalAlpha = alpha;
+
+                        // 围绕中心进行旋转与缩放
+                        const cx = this.x + this.width / 2;
+                        const cy = this.y + this.height / 2;
+                        ctx.translate(cx, cy);
+                        ctx.rotate(rotation);
+                        ctx.scale(scale, scale);
+
+                        // 绘制视频帧（以中心为原点）
+                        ctx.drawImage(this.video, -this.width / 2, -this.height / 2, this.width, this.height);
+
+                        // 恢复上下文状态
+                        ctx.restore();
+                        
+                        // 如果视频暂停了，尝试重新播放
+                        if (this.video.paused && this.video.readyState >= 2) {
+                            this.video.play().catch(e => {
+                                // 静默处理播放失败
+                            });
+                        }
+                    } catch (e) {
+                        // 绘制失败时的调试信息
+                        console.warn(`绘制视频帧失败:`, e, `readyState: ${this.video.readyState}, paused: ${this.video.paused}`);
+                    }
+                }
+            }
+        }
+
+        // 设置文件上传功能
+        function setupFileUpload() {
+            const uploadButton = document.getElementById('upload-button');
+            const videoUploader = document.getElementById('video-uploader');
+            const loadingIndicator = document.getElementById('loading-indicator');
+
+            // 点击上传按钮
+            uploadButton.addEventListener('click', () => {
+                videoUploader.click();
+            });
+
+            // 文件选择事件
+            videoUploader.addEventListener('change', handleFiles);
+
+            // 拖拽事件
+            document.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                document.body.classList.add('drag-over');
+            });
+
+            document.addEventListener('dragleave', (e) => {
+                if (e.clientX === 0 && e.clientY === 0) {
+                    document.body.classList.remove('drag-over');
+                }
+            });
+
+            document.addEventListener('drop', (e) => {
+                e.preventDefault();
+                document.body.classList.remove('drag-over');
+                handleFiles({ target: { files: e.dataTransfer.files } });
+            });
+        }
+
+        // 处理上传的文件
+        function handleFiles(event) {
+            const files = event.target.files;
+            const loadingIndicator = document.getElementById('loading-indicator');
+            
+            if (files.length === 0) return;
+
+            // 检查文件数量限制（防止性能问题）
+            const maxFiles = 100;
+            if (creatures.length + files.length > maxFiles) {
+                alert(`为了保证性能，最多只能同时显示 ${maxFiles} 个宇宙朋友。当前已有 ${creatures.length} 个。`);
+                return;
+            }
+
+            loadingIndicator.style.display = 'block';
+            let loadedCount = 0;
+            const totalFiles = files.length;
+            let validFiles = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // 检查文件类型和大小
+                if (!file.type.includes('webm')) {
+                    console.warn(`跳过非webm文件: ${file.name}`);
+                    loadedCount++;
+                    checkComplete();
+                    continue;
+                }
+
+                // 检查文件大小（限制为50MB）
+                if (file.size > 50 * 1024 * 1024) {
+                    console.warn(`文件过大，跳过: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+                    loadedCount++;
+                    checkComplete();
+                    continue;
+                }
+
+                validFiles++;
+                const videoUrl = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                
+                video.src = videoUrl;
+                video.loop = true;
+                video.muted = true;
+                video.autoplay = true;
+                video.preload = 'auto'; // 改回auto确保视频完全加载
+                video.crossOrigin = 'anonymous';
+                video.playsInline = true; // 确保在移动设备上内联播放
+
+                // 设置加载超时
+                const timeoutId = setTimeout(() => {
+                    console.error(`视频加载超时: ${file.name}`);
+                    loadedCount++;
+                    checkComplete();
+                }, 10000);
+
+            let handled = false;
+            const onUploadSuccess = () => {
+                if (handled) return;
+                clearTimeout(timeoutId);
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    console.error(`无效的视频尺寸: ${file.name}`);
+                    URL.revokeObjectURL(videoUrl);
+                    loadedCount++;
+                    checkComplete();
+                    return;
+                }
+                handled = true;
+                video.play().catch(() => {});
+                const creature = new Creature(video);
+                creatures.push(creature);
+                updateCreatureCount();
+                loadedCount++;
+                checkComplete();
+                console.log(`加载宇宙朋友: ${file.name} (${video.videoWidth}x${video.videoHeight})`);
+            };
+            video.addEventListener('loadedmetadata', onUploadSuccess);
+            video.addEventListener('canplay', onUploadSuccess);
+            video.addEventListener('loadeddata', onUploadSuccess);
+
+                video.addEventListener('error', (e) => {
+                    clearTimeout(timeoutId);
+                    console.error(`视频加载失败: ${file.name}`, e);
+                    URL.revokeObjectURL(videoUrl);
+                    loadedCount++;
+                    checkComplete();
+                });
+            }
+
+            function checkComplete() {
+                if (loadedCount === totalFiles) {
+                    loadingIndicator.style.display = 'none';
+                    if (validFiles > 0) {
+                        console.log(`成功加载 ${creatures.length} 个宇宙朋友`);
+                    }
+                }
+            }
+
+            // 清空文件输入
+            event.target.value = '';
+        }
+
+        // 更新生物数量显示
+        function updateCreatureCount() {
+            document.getElementById('creature-count').textContent = creatures.length;
+            // 超过上限时执行裁剪
+            enforceCreatureLimit();
+        }
+
+        // 执行初始扫描 - 轻量级快速扫描
+        async function performInitialScan() {
+            console.log('🔍 开始轻量级初始扫描...');
+            
+            // 生成简化的检测列表
+            const targetFiles = generateSimpleFileList();
+            
+            console.log(`🎯 快速检测 ${targetFiles.length} 个常见文件模式...`);
+            console.log('⚡ 策略：轻量级扫描，优先检测常用文件名');
+            
+            let foundCount = 0;
+            
+            // 简化的并发检测，无延迟
+            const checkPromises = targetFiles.map(filename => checkVideoFile(filename));
+            await Promise.all(checkPromises);
+            
+            const validFiles = Array.from(knownVideoFiles).filter(f => !f.endsWith('_not_found'));
+            foundCount = validFiles.length;
+            
+            console.log(`✅ 初始扫描完成！发现 ${foundCount} 个现有视频文件`);
+            console.log('📋 发现的文件:', validFiles.sort());
+            
+            if (foundCount > 0) {
+                showNewVideoNotification(`初始化完成：发现 ${foundCount} 个现有视频`);
+            } else {
+                showNewVideoNotification('初始化完成：video文件夹中暂无webm文件');
+            }
+        }
+
+        // 生成简化的文件扫描列表 - 只检测常用文件名
+        function generateSimpleFileList() {
+            const targetFiles = [];
+            
+            console.log('📋 生成简化的文件检测列表...');
+            
+            // 1. 数字命名文件 (1-999)
+            for (let i = 1; i <= 999; i++) {
+                targetFiles.push(`${i}.webm`);
+            }
+            
+            // 2. 字母命名文件 (a-z)
+            for (let i = 97; i <= 122; i++) { // a-z
+                targetFiles.push(`${String.fromCharCode(i)}.webm`);
+            }
+            
+            // 3. Character系列文件 (Character_00001_transparent到Character_00100_transparent)
+            for (let i = 1; i <= 100; i++) {
+                const num = String(i).padStart(5, '0');
+                targetFiles.push(`Character_${num}_transparent.webm`);
+            }
+            
+            // 4. 常见文件名
+            const commonFiles = [
+                'test.webm', 'demo.webm', 'new.webm', 'temp.webm', 'video.webm',
+                'clip.webm', 'movie.webm', 'render.webm', 'output.webm', 'final.webm',
+                'sample.webm', 'animation.webm', 'character.webm', 'dasdas.webm'
+            ];
+            targetFiles.push(...commonFiles);
+            
+            console.log(`📊 生成了 ${targetFiles.length} 个检测目标（轻量级）`);
+            
+            return targetFiles;
+        }
+
+        // 启动视频文件夹监听 - 轻量级模式
+        function startVideoMonitoring() {
+            if (isMonitoring) return;
+            
+            isMonitoring = true;
+            console.log('🚀 启动轻量级监听模式...');
+            
+            // 更新状态显示
+            updateMonitorStatus();
+            
+            // 轻量级监听：使用可配置间隔
+            console.log(`⚡ 轻量级监听间隔: ${monitorIntervalMs}ms`);
+            console.log(`🔥 轻量级监听已启用，新webm文件将在${Math.round(monitorIntervalMs/1000)}秒内被检测到`);
+            
+            videoMonitorInterval = setInterval(() => {
+                if (useFsAccess && dirHandle) {
+                    enumerateDirectoryAndLoad();
+                } else {
+                    quickScanNewFiles();
+                }
+            }, monitorIntervalMs);
+            // 立即进行一次扫描
+            if (useFsAccess && dirHandle) {
+                enumerateDirectoryAndLoad();
+            } else {
+                quickScanNewFiles();
+            }
+        }
+
+        // 快速扫描新文件 - 轻量级版本
+        async function quickScanNewFiles() {
+            const targetFiles = generateSimpleFileList();
+            
+            // 检测未知文件，且对曾标记为未找到的文件进行重试
+            const checkPromises = targetFiles.map(filename => {
+                if (!knownVideoFiles.has(filename)) {
+                    if (knownVideoFiles.has(`${filename}_not_found`)) {
+                        return recheckPreviouslyNotFound(filename);
+                    }
+                    return checkVideoFile(filename);
+                }
+                return Promise.resolve();
+            });
+            
+            await Promise.all(checkPromises);
+        }
+
+        // 对此前标记为未找到的文件进行重试检测
+        async function recheckPreviouslyNotFound(filename) {
+            return new Promise((resolve) => {
+                const testVideo = document.createElement('video');
+                testVideo.preload = 'metadata';
+                testVideo.muted = true;
+                testVideo.style.display = 'none';
+                if (window.location.protocol !== 'file:') {
+                    testVideo.crossOrigin = 'anonymous';
+                }
+
+                let resolved = false;
+                const TIMEOUT_MS = window.location.protocol === 'file:' ? 2000 : 800;
+                const timeoutId = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        // 从未找到列表中移除并标记为已发现
+                        knownVideoFiles.delete(`${filename}_not_found`);
+                        knownVideoFiles.add(filename);
+                        console.log(`✅ 发现此前不存在的文件: ${filename}`);
+                        loadNewVideoFile(`video/${filename}`, filename);
+                        resolve();
+                    }
+                }, TIMEOUT_MS);
+
+                const successHandler = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        // 从未找到列表中移除并标记为已发现
+                        knownVideoFiles.delete(`${filename}_not_found`);
+                        knownVideoFiles.add(filename);
+                        console.log(`✅ 发现此前不存在的文件: ${filename}`);
+                        loadNewVideoFile(`video/${filename}`, filename);
+                        resolve();
+                    }
+                };
+
+                testVideo.addEventListener('loadedmetadata', successHandler);
+                testVideo.addEventListener('canplay', successHandler);
+                testVideo.addEventListener('error', () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        resolve();
+                    }
+                });
+
+                try {
+                    testVideo.src = `video/${filename}`;
+                } catch (e) {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        resolve();
+                    }
+                }
+            });
+        }
+
+        // C键功能：清除已删除的文件对应的宇宙朋友
+        async function cleanupDeletedFiles() {
+            console.log('🧹 C键触发：开始清除已删除的文件...');
+            showNewVideoNotification('正在检查并清除已删除的文件...');
+            
+            if (creatures.length === 0) {
+                console.log('当前没有宇宙朋友，无需清除');
+                showNewVideoNotification('当前没有宇宙朋友需要清除');
+                return;
+            }
+            
+            const beforeCount = creatures.length;
+            console.log(`📊 当前宇宙朋友数量: ${beforeCount}`);
+            
+            // 获取当前所有已加载的文件名
+            const currentLoadedFiles = new Set();
+            creatures.forEach(creature => {
+                if (creature.video && creature.video.src) {
+                    const filename = creature.video.src.split('/').pop();
+                    currentLoadedFiles.add(filename);
+                }
+            });
+            
+            console.log('📋 当前已加载的文件:', Array.from(currentLoadedFiles));
+            
+            // 目录直读模式下，直接用目录结果判断并移除
+            if (useFsAccess && dirHandle) {
+                await enumerateDirectoryAndLoad(); // 内部包含清理逻辑
+                return;
+            }
+
+            // 逐个检测文件是否存在（避免并发干扰）
+            console.log('🔍 开始逐个检测文件存在性...');
+            const deletedFiles = [];
+            
+            for (const filename of Array.from(currentLoadedFiles)) {
+                console.log(`🔍 正在检测文件: ${filename}`);
+                const exists = await checkFileExists(filename);
+                
+                if (!exists) {
+                    deletedFiles.push(filename);
+                    console.log(`❌ 确认文件已删除: ${filename}`);
+                } else {
+                    console.log(`✅ 确认文件存在: ${filename}`);
+                }
+                
+                // 添加小延迟，避免检测冲突
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            if (deletedFiles.length === 0) {
+                console.log('✅ 所有文件都存在，无需清除');
+                showNewVideoNotification('所有文件都存在，无需清除');
+                return;
+            }
+            
+            // 移除已删除文件对应的宇宙朋友
+            console.log(`🗑️ 开始移除 ${deletedFiles.length} 个已删除文件的宇宙朋友...`);
+            removeDeletedCreatures(deletedFiles);
+            
+            const afterCount = creatures.length;
+            const removedCount = beforeCount - afterCount;
+            
+            console.log(`✅ 清除完成！移除了 ${removedCount} 个宇宙朋友`);
+            console.log(`📊 清除后宇宙朋友数量: ${afterCount}`);
+            
+            showNewVideoNotification(`🧹 清除完成：移除了 ${removedCount} 个已删除文件的宇宙朋友`);
+        }
+
+        // 检查文件是否存在 - 修复版本
+        async function checkFileExists(filename) {
+            return new Promise((resolve) => {
+                const video = document.createElement('video');
+                const fullPath = `video/${filename}`;
+                
+                let resolved = false;
+                let hasMetadata = false;
+                let hasValidDimensions = false;
+                
+                // 动态超时：file协议更宽松
+                const TIMEOUT_MS = window.location.protocol === 'file:' ? 2000 : 800;
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        console.log(`⏰ 文件检测超时: ${filename} - 判定为不存在`);
+                        resolve(false); // 超时判定为文件不存在
+                    }
+                }, TIMEOUT_MS);
+                
+                // 只有在真正加载到有效元数据时才认为文件存在
+                video.addEventListener('loadedmetadata', () => {
+                    if (!resolved) {
+                        hasMetadata = true;
+                        // 检查视频尺寸，确保是有效的视频文件
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            hasValidDimensions = true;
+                            resolved = true;
+                            clearTimeout(timeout);
+                            console.log(`✅ 文件确实存在: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+                            resolve(true);
+                        } else {
+                            console.log(`❌ 文件无效或损坏: ${filename} - 尺寸为 ${video.videoWidth}x${video.videoHeight}`);
+                            resolved = true;
+                            clearTimeout(timeout);
+                            resolve(false);
+                        }
+                    }
+                });
+                
+                // 加载数据事件 - 作为备用检测
+                video.addEventListener('loadeddata', () => {
+                    if (!resolved && !hasMetadata) {
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            resolved = true;
+                            clearTimeout(timeout);
+                            console.log(`✅ 文件存在(通过loadeddata): ${filename}`);
+                            resolve(true);
+                        }
+                    }
+                });
+                
+                // 错误事件 - 明确表示文件不存在
+                video.addEventListener('error', (e) => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        console.log(`❌ 文件确实不存在或无法访问: ${filename}`, e.target.error);
+                        resolve(false);
+                    }
+                });
+                
+                // 中止事件 - 可能表示文件问题
+                video.addEventListener('abort', () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        console.log(`❌ 文件加载中止: ${filename} - 可能不存在`);
+                        resolve(false);
+                    }
+                });
+                
+                // 停止事件 - 可能表示文件问题
+                video.addEventListener('stalled', () => {
+                    if (!resolved) {
+                        // 给更多时间，但不立即判定
+                        setTimeout(() => {
+                            if (!resolved && !hasMetadata) {
+                                resolved = true;
+                                clearTimeout(timeout);
+                                console.log(`❌ 文件加载停滞: ${filename} - 可能不存在`);
+                                resolve(false);
+                            }
+                        }, 300);
+                    }
+                });
+                
+                // 设置视频属性
+                video.preload = 'metadata';
+                video.muted = true;
+                video.style.display = 'none';
+                
+                // file://协议下不设置crossOrigin
+                if (window.location.protocol !== 'file:') {
+                    video.crossOrigin = 'anonymous';
+                }
+                
+                try {
+                    video.src = fullPath;
+                    // 手动触发加载
+                    video.load();
+                } catch (e) {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        console.log(`❌ 设置视频源失败: ${filename}`, e);
+                        resolve(false);
+                    }
+                }
+            });
+        }
+
+        // 移除已删除文件对应的宇宙朋友
+        function removeDeletedCreatures(deletedFiles) {
+            const deletedFilesSet = new Set(deletedFiles);
+            const originalCount = creatures.length;
+            
+            // 筛选出需要保留的宇宙朋友
+            const remainingCreatures = creatures.filter(creature => {
+                if (creature.video && creature.video.src) {
+                    const filename = creature.video.src.split('/').pop();
+                    const shouldKeep = !deletedFilesSet.has(filename);
+                    
+                    if (!shouldKeep) {
+                        // 释放视频资源
+                        if (creature.video.src && creature.video.src.startsWith('blob:')) {
+                            URL.revokeObjectURL(creature.video.src);
+                        }
+                        console.log(`🗑️ 移除已删除文件的宇宙朋友: ${filename}`);
+                    }
+                    
+                    return shouldKeep;
+                }
+                return true;
+            });
+            
+            // 更新宇宙朋友列表
+            creatures.length = 0;
+            creatures.push(...remainingCreatures);
+            
+            // 从已知文件列表中移除
+            deletedFiles.forEach(filename => {
+                knownVideoFiles.delete(filename);
+                knownVideoFiles.delete(`${filename}_not_found`);
+                console.log(`🗑️ 从已知文件列表中移除: ${filename}`);
+            });
+            
+            // 更新UI
+            updateCreatureCount();
+            
+            const removedCount = originalCount - creatures.length;
+            console.log(`✅ 成功移除 ${removedCount} 个宇宙朋友，当前剩余 ${creatures.length} 个`);
+        }
+
+        // 停止视频文件夹监听
+        function stopVideoMonitoring() {
+            if (!isMonitoring) return;
+            
+            isMonitoring = false;
+            if (videoMonitorInterval) {
+                clearInterval(videoMonitorInterval);
+                videoMonitorInterval = null;
+            }
+            console.log('已停止监听video文件夹');
+        }
+
+        // 切换视频文件夹监听状态
+        function toggleVideoMonitoring() {
+            if (isMonitoring) {
+                stopVideoMonitoring();
+                updateMonitorStatus();
+                showNewVideoNotification('已停止文件夹监听');
+            } else {
+                startVideoMonitoring();
+                updateMonitorStatus();
+                showNewVideoNotification(useFsAccess ? '已开启目录直读监听' : '已开启文件夹监听');
+            }
+        }
+
+        // 更新监听状态显示
+        function updateMonitorStatus() {
+            const statusElement = document.getElementById('monitor-status');
+            if (statusElement) {
+                statusElement.textContent = isMonitoring ? '自动监听' : '手动模式';
+                statusElement.style.color = isMonitoring ? '#00ff00' : '#ffaa00';
+            }
+        }
+
+        // 手动刷新video文件夹 - F键触发快速检测
+        async function manualRefreshVideoFolder() {
+            console.log('🔄 F键触发：快速检测新增文件...');
+            showNewVideoNotification('正在快速检测新增文件...');
+            
+            const beforeCount = creatures.length;
+            
+            // FS 目录直读模式下，直接枚举目录
+            if (useFsAccess && dirHandle) {
+                await enumerateDirectoryAndLoad();
+                const afterCount = creatures.length;
+                const newFilesFound = afterCount - beforeCount;
+                console.log(`✅ 快速检测完成！发现 ${newFilesFound} 个新文件 (FS)`);
+                if (newFilesFound > 0) {
+                    showNewVideoNotification(`🔄 快速检测：发现 ${newFilesFound} 个新文件！`);
+                } else {
+                    showNewVideoNotification('快速检测完成：未发现新文件');
+                }
+                return;
+            }
+            
+            // 清除检测缓存，强制重新检测所有文件
+            const currentFiles = new Set();
+            creatures.forEach(creature => {
+                if (creature.video && creature.video.src) {
+                    const filename = creature.video.src.split('/').pop();
+                    currentFiles.add(filename);
+                }
+            });
+            
+            // 清空缓存并重新记录已加载的文件
+            knownVideoFiles.clear();
+            currentFiles.forEach(filename => {
+                knownVideoFiles.add(filename);
+            });
+            
+            // 执行快速扫描
+            await quickScanNewFiles();
+            
+            const afterCount = creatures.length;
+            const newFilesFound = afterCount - beforeCount;
+            
+            console.log(`✅ 快速检测完成！发现 ${newFilesFound} 个新文件`);
+            
+            if (newFilesFound > 0) {
+                showNewVideoNotification(`🔄 快速检测：发现 ${newFilesFound} 个新文件！`);
+            } else {
+                showNewVideoNotification('快速检测完成：未发现新文件');
+            }
+        }
+
+
+
+        // 尝试加载新文件
+        async function tryLoadNewFile(filename) {
+            return new Promise((resolve) => {
+                // 如果已经检测过且标记为不存在，直接返回
+                if (knownVideoFiles.has(`${filename}_not_found`)) {
+                    resolve(false);
+                    return;
+                }
+                
+                // 如果已经在已知文件列表中，检查是否真的已加载
+                if (knownVideoFiles.has(filename)) {
+                    const alreadyLoaded = creatures.some(creature => 
+                        creature.video && creature.video.src && creature.video.src.includes(filename)
+                    );
+                    
+                    if (alreadyLoaded) {
+                        resolve(false);
+                        return;
+                    } else {
+                        // 文件在已知列表中但未加载，可能是之前检测到但未成功加载
+                        console.log(`🔄 重新尝试加载已知文件: ${filename}`);
+                    }
+                }
+                
+                // 检查是否已经在生物列表中
+                const alreadyLoaded = creatures.some(creature => 
+                    creature.video && creature.video.src && creature.video.src.includes(filename)
+                );
+                
+                if (alreadyLoaded) {
+                    // 确保在已知文件列表中
+                    knownVideoFiles.add(filename);
+                    resolve(false);
+                    return;
+                }
+                
+                const video = document.createElement('video');
+                const fullPath = `video/${filename}`;
+                
+                let resolved = false;
+                const TIMEOUT_MS = window.location.protocol === 'file:' ? 2000 : 800;
+                const timeout = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        knownVideoFiles.add(`${filename}_not_found`);
+                        resolve(false);
+                    }
+                }, TIMEOUT_MS); // 根据协议动态超时
+                
+                video.addEventListener('loadstart', () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        knownVideoFiles.add(filename);
+                        console.log(`🎯 检测到新文件: ${filename}`);
+                        loadNewVideoFile(fullPath, filename);
+                        resolve(true);
+                    }
+                });
+                
+                video.addEventListener('loadedmetadata', () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        knownVideoFiles.add(filename);
+                        console.log(`✅ 成功加载新文件: ${filename}`);
+                        loadNewVideoFile(fullPath, filename);
+                        resolve(true);
+                    }
+                });
+                
+                video.addEventListener('error', () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        knownVideoFiles.add(`${filename}_not_found`);
+                        resolve(false);
+                    }
+                });
+                
+                // 设置视频属性并开始加载
+                video.preload = 'metadata';
+                video.muted = true;
+                video.style.display = 'none';
+                // file://协议下不设置crossOrigin
+                if (window.location.protocol !== 'file:') {
+                    video.crossOrigin = 'anonymous';
+                }
+                
+                try {
+                    video.src = fullPath;
+                } catch (e) {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeout);
+                        knownVideoFiles.add(`${filename}_not_found`);
+                        resolve(false);
+                    }
+                }
+            });
+        }
+
+
+        // 更新文件列表 - 轻量级版本
+        function updateFileList() {
+            console.log('🚀 U键触发：扩展检测列表...');
+            showNewVideoNotification('已扩展检测范围到1-999.webm');
+
+            // 简单扩展数字检测范围，无需复杂逻辑
+            console.log('📋 扩展数字文件检测范围到1-999');
+            
+            // 立即进行一次快速扫描
+            quickScanNewFiles();
+        }
+
+        // 显示手动添加文件面板
+        function showManualAddPanel() {
+            const panel = document.getElementById('manual-add-panel');
+            if (panel) {
+                panel.style.display = 'block';
+                const input = document.getElementById('manual-filename');
+                if (input) {
+                    input.focus();
+                }
+            }
+        }
+
+        // 隐藏手动添加文件面板
+        function hideManualAddPanel() {
+            const panel = document.getElementById('manual-add-panel');
+            if (panel) {
+                panel.style.display = 'none';
+                const input = document.getElementById('manual-filename');
+                if (input) {
+                    input.value = '';
+                }
+            }
+        }
+
+        // 手动加载指定文件
+        async function loadManualFile() {
+            const input = document.getElementById('manual-filename');
+            if (!input || !input.value.trim()) {
+                alert('请输入文件名');
+                return;
+            }
+
+            const filename = input.value.trim();
+            console.log(`尝试手动加载文件: ${filename}`);
+            
+            // 检查文件名是否包含.webm扩展名
+            if (!filename.toLowerCase().endsWith('.webm')) {
+                alert('文件名必须以.webm结尾');
+                return;
+            }
+
+            // 从已知文件列表中移除（如果存在），强制重新检查
+            knownVideoFiles.delete(filename);
+            knownVideoFiles.delete(`${filename}_not_found`);
+
+            showNewVideoNotification(`正在加载: ${filename}`);
+            hideManualAddPanel();
+
+            // 手动加载时根据协议选择不同策略
+            const fullPath = `video/${filename}`;
+            const isFileProtocol = window.location.protocol === 'file:';
+            
+            if (isFileProtocol) {
+                // FILE协议下的手动加载
+                manualLoadForFileProtocol(fullPath, filename);
+            } else {
+                // HTTP协议下的手动加载
+                manualLoadForHttpProtocol(fullPath, filename);
+            }
+        }
+
+        // FILE协议下的手动加载
+        function manualLoadForFileProtocol(fullPath, filename) {
+            const video = document.createElement('video');
+            video.src = fullPath;
+            video.loop = true;
+            video.muted = true;
+            video.autoplay = false; // FILE协议下不自动播放
+            video.preload = 'metadata';
+            // 不设置crossOrigin，避免CORS问题
+            video.playsInline = true;
+
+            let handled = false;
+            const onSuccess = () => {
+                if (handled) return;
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    console.error(`[FILE协议] 手动加载-无效视频尺寸: ${filename}`);
+                    showNewVideoNotification('视频文件无效或损坏');
+                    return;
+                }
+                handled = true;
+                setTimeout(() => { video.play().catch(() => {}); }, 100);
+                const creature = new Creature(video);
+                creatures.push(creature);
+                updateCreatureCount();
+                loadedFilenames.add(filename);
+                knownVideoFiles.add(filename);
+                userAddedFiles.add(filename);
+                showNewVideoNotification(`手动加载成功: ${filename}`);
+                attachPlaybackGuards(video);
+            };
+            video.addEventListener('loadedmetadata', onSuccess);
+            video.addEventListener('canplay', onSuccess);
+            video.addEventListener('loadeddata', onSuccess);
+
+            video.addEventListener('error', (e) => {
+                console.error(`✗ [FILE协议] 手动加载失败: ${filename}`, e.target.error);
+                // 只在手动加载时显示失败通知，因为用户主动尝试加载
+                showNewVideoNotification(`手动加载失败: ${filename} - 请检查文件是否存在`);
+            });
+        }
+
+        // HTTP协议下的手动加载
+        function manualLoadForHttpProtocol(fullPath, filename) {
+            const video = document.createElement('video');
+            video.src = fullPath;
+            video.loop = true;
+            video.muted = true;
+            video.autoplay = true;
+            video.preload = 'auto';
+            video.crossOrigin = 'anonymous';
+            video.playsInline = true;
+            let handled = false;
+            const onSuccess = () => {
+                if (handled) return;
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    console.error(`[HTTP协议] 手动加载-无效视频尺寸: ${filename}`);
+                    showNewVideoNotification('视频文件无效或损坏');
+                    return;
+                }
+                handled = true;
+                video.play().catch(() => {});
+                const creature = new Creature(video);
+                creatures.push(creature);
+                updateCreatureCount();
+                loadedFilenames.add(filename);
+                console.log(`✓ [HTTP协议] 手动加载成功: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+                showNewVideoNotification(`手动加载成功: ${filename}`);
+                knownVideoFiles.add(filename);
+                userAddedFiles.add(filename);
+                attachPlaybackGuards(video);
+            };
+            video.addEventListener('loadedmetadata', onSuccess);
+            video.addEventListener('canplay', onSuccess);
+            video.addEventListener('loadeddata', onSuccess);
+
+            video.addEventListener('error', (e) => {
+                console.error(`✗ [HTTP协议] 手动加载失败: ${filename}`, e);
+                // 只在手动加载时显示失败通知，因为用户主动尝试加载
+                showNewVideoNotification(`手动加载失败: ${filename} - 请检查文件是否存在`);
+            });
+        }
+
+
+        // 检查单个视频文件是否存在且未加载 - 轻量级版本
+        async function checkVideoFile(filename) {
+            const fullPath = `video/${filename}`;
+            
+            // 如果已经知道这个文件或已标记为不存在，跳过
+            if (knownVideoFiles.has(filename) || knownVideoFiles.has(`${filename}_not_found`)) {
+                return;
+            }
+
+            return new Promise((resolve) => {
+                const testVideo = document.createElement('video');
+                testVideo.preload = 'metadata';
+                testVideo.muted = true;
+                testVideo.style.display = 'none';
+                
+                // 根据协议设置crossOrigin
+                if (window.location.protocol !== 'file:') {
+                    testVideo.crossOrigin = 'anonymous';
+                }
+                
+                let resolved = false;
+                
+                // 较短的超时时间，提高检测速度
+                const timeoutId = setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        knownVideoFiles.add(`${filename}_not_found`);
+                        resolve();
+                    }
+                }, 800);
+
+                // 统一的成功处理
+                const successHandler = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        
+                        knownVideoFiles.add(filename);
+                        console.log(`✅ 发现新文件: ${filename}`);
+                        loadNewVideoFile(fullPath, filename);
+                        resolve();
+                    }
+                };
+
+                // 监听关键事件
+                testVideo.addEventListener('loadedmetadata', successHandler);
+                testVideo.addEventListener('canplay', successHandler);
+
+                // 静默处理错误
+                testVideo.addEventListener('error', () => {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        knownVideoFiles.add(`${filename}_not_found`);
+                        resolve();
+                    }
+                });
+
+                try {
+                    testVideo.src = fullPath;
+                } catch (e) {
+                    if (!resolved) {
+                        resolved = true;
+                        clearTimeout(timeoutId);
+                        knownVideoFiles.add(`${filename}_not_found`);
+                        resolve();
+                    }
+                }
+            });
+        }
+
+        // 加载新发现的视频文件
+        function loadNewVideoFile(videoPath, filename) {
+            // 检查是否已经有相同路径的视频在播放（避免重复）
+            const existingCreature = creatures.find(creature => 
+                creature.video.src && creature.video.src.includes(filename)
+            );
+            
+            if (existingCreature) {
+                console.log(`视频 ${filename} 已存在，跳过加载`);
+                return;
+            }
+
+            // 统一基于文件名的去重
+            if (loadedFilenames.has(filename) || loadingFilenames.has(filename)) {
+                console.log(`文件名 ${filename} 已加载，跳过`);
+                return;
+            }
+            loadingFilenames.add(filename);
+
+            // 检查数量限制
+            const maxFiles = 100;
+            if (creatures.length >= maxFiles) {
+                console.warn(`已达到最大生物数量限制 (${maxFiles})，跳过加载新视频: ${filename}`);
+                loadingFilenames.delete(filename);
+                return;
+            }
+
+            // 检测协议并采用不同的加载策略
+            const isFileProtocol = window.location.protocol === 'file:';
+            
+            if (isFileProtocol) {
+                // FILE协议下，不设置crossOrigin属性，避免CORS问题
+                loadVideoForFileProtocol(videoPath, filename);
+            } else {
+                // HTTP协议下，使用标准加载方式
+                loadVideoForHttpProtocol(videoPath, filename);
+            }
+        }
+
+        // FILE协议下的视频加载
+        function loadVideoForFileProtocol(videoPath, filename) {
+            console.log(`[FILE协议] 开始加载视频: ${filename}, 路径: ${videoPath}`);
+            
+            const video = document.createElement('video');
+            video.src = videoPath;
+            video.loop = true;
+            video.muted = true;
+            video.autoplay = false; // FILE协议下先不自动播放
+            video.preload = 'auto'; // 改为auto确保完全加载
+            // 不设置crossOrigin属性，避免CORS问题
+            video.playsInline = true;
+
+            let loadSuccess = false;
+
+            // 添加更多事件监听以确保捕获成功加载
+            video.addEventListener('loadstart', () => {
+                console.log(`[FILE协议] 开始加载视频数据: ${filename}`);
+            });
+
+            video.addEventListener('loadeddata', () => {
+                if (loadSuccess) return;
+                console.log(`[FILE协议] 视频数据加载完成: ${filename}`);
+                
+                // 检查视频尺寸
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    console.error(`[FILE协议] 无效的视频尺寸: ${filename}`);
+                    return;
+                }
+
+                loadSuccess = true;
+                console.log(`✓ [FILE协议] 成功加载视频数据: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+
+                // 立即创建生物对象
+                const creature = new Creature(video);
+                creatures.push(creature);
+                updateCreatureCount();
+                loadedFilenames.add(filename);
+                loadingFilenames.delete(filename);
+                attachPlaybackGuards(video);
+                
+                console.log(`✓ [FILE协议] 成功创建海洋生物: ${filename}, 当前生物数量: ${creatures.length}`);
+                showNewVideoNotification(`成功加载: ${filename}`);
+
+                // 延迟尝试播放
+                setTimeout(() => {
+                    video.play().then(() => {
+                        console.log(`✓ [FILE协议] 视频开始播放: ${filename}`);
+                    }).catch(e => {
+                        console.log(`[FILE协议] 视频需要用户交互才能播放: ${filename}`);
+                        // 这是正常的，用户点击画布时会触发播放
+                    });
+                }, 200);
+            });
+
+            video.addEventListener('loadedmetadata', () => {
+                if (loadSuccess) return;
+                console.log(`[FILE协议] 视频元数据加载完成: ${filename}`);
+                
+                // 检查视频尺寸
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    console.error(`[FILE协议] 无效的视频尺寸: ${filename}`);
+                    return;
+                }
+
+                loadSuccess = true;
+                console.log(`✓ [FILE协议] 成功加载视频元数据: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+
+                // 立即创建生物对象
+                const creature = new Creature(video);
+                creatures.push(creature);
+                updateCreatureCount();
+                loadedFilenames.add(filename);
+                loadingFilenames.delete(filename);
+                attachPlaybackGuards(video);
+                
+                console.log(`✓ [FILE协议] 成功创建海洋生物: ${filename}, 当前生物数量: ${creatures.length}`);
+                showNewVideoNotification(`成功加载: ${filename}`);
+
+                // 延迟尝试播放
+                setTimeout(() => {
+                    video.play().then(() => {
+                        console.log(`✓ [FILE协议] 视频开始播放: ${filename}`);
+                    }).catch(e => {
+                        console.log(`[FILE协议] 视频需要用户交互才能播放: ${filename}`);
+                    });
+                }, 200);
+            });
+
+            video.addEventListener('canplay', () => {
+                console.log(`[FILE协议] 视频可以播放: ${filename}`);
+                if (!loadSuccess) {
+                    loadSuccess = true;
+                    
+                    const creature = new Creature(video);
+                    creatures.push(creature);
+                    updateCreatureCount();
+                    loadedFilenames.add(filename);
+                    loadingFilenames.delete(filename);
+                    
+                    console.log(`✓ [FILE协议] 通过canplay创建海洋生物: ${filename}, 当前生物数量: ${creatures.length}`);
+                    showNewVideoNotification(`成功加载: ${filename}`);
+                }
+            });
+
+            video.addEventListener('error', (e) => {
+                console.error(`✗ [FILE协议] 视频加载失败: ${filename}`, e.target.error);
+                // 隐藏加载失败的通知，避免干扰用户
+                // showNewVideoNotification(`加载失败: ${filename}`);
+                loadingFilenames.delete(filename);
+            });
+
+            // 添加调试信息
+            console.log(`[FILE协议] 视频元素创建完成，等待加载事件: ${filename}`);
+        }
+
+        // HTTP协议下的视频加载
+        function loadVideoForHttpProtocol(videoPath, filename) {
+            const video = document.createElement('video');
+            video.src = videoPath;
+            video.loop = true;
+            video.muted = true;
+            video.autoplay = true;
+            video.preload = 'auto';
+            video.crossOrigin = 'anonymous';
+            video.playsInline = true;
+
+            let handled = false;
+            const onSuccess = () => {
+                if (handled) return;
+                if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    console.error(`[HTTP协议] 无效的视频尺寸: ${filename}`);
+                    loadingFilenames.delete(filename);
+                    return;
+                }
+                handled = true;
+                video.play().catch(() => {});
+                const creature = new Creature(video);
+                creatures.push(creature);
+                updateCreatureCount();
+                loadedFilenames.add(filename);
+                loadingFilenames.delete(filename);
+                attachPlaybackGuards(video);
+                console.log(`✓ [HTTP协议] 成功创建海洋生物: ${filename} (${video.videoWidth}x${video.videoHeight})`);
+                showNewVideoNotification(`成功加载: ${filename}`);
+            };
+            video.addEventListener('loadedmetadata', onSuccess);
+            video.addEventListener('canplay', onSuccess);
+            video.addEventListener('loadeddata', onSuccess);
+
+            video.addEventListener('error', (e) => {
+                if (handled) return;
+                handled = true;
+                console.error(`✗ [HTTP协议] 视频加载失败: ${filename}`, e);
+                loadingFilenames.delete(filename);
+            });
+        }
+
+        // 调试生物状态
+        function debugCreatures() {
+            console.log('=== 生物调试信息 ===');
+            console.log(`总生物数量: ${creatures.length}`);
+            console.log(`已知文件数量: ${knownVideoFiles.size}`);
+            
+            creatures.forEach((creature, index) => {
+                const video = creature.video;
+                console.log(`生物 ${index + 1}:`, {
+                    src: video.src,
+                    readyState: video.readyState,
+                    paused: video.paused,
+                    ended: video.ended,
+                    width: video.videoWidth,
+                    height: video.videoHeight,
+                    position: `(${Math.round(creature.x)}, ${Math.round(creature.y)})`,
+                    size: `${Math.round(creature.width)}x${Math.round(creature.height)}`
+                });
+            });
+            
+            console.log('已知文件列表:', Array.from(knownVideoFiles));
+            console.log('用户添加文件:', Array.from(userAddedFiles));
+        }
+
+        // 测试检测功能
+        async function testDetection() {
+            console.log('🧪 开始测试检测功能...');
+            showNewVideoNotification('正在测试检测当前文件夹中的已知文件...');
+            
+            // 测试当前文件夹中确实存在的文件
+            const testFiles = [
+                '1.webm', '2.webm', '3.webm', '4.webm',
+                'Character_00002_transparent.webm', 'Character_00004_transparent.webm',
+                'Character_00005_transparent.webm', 'Character_00006_transparent.webm',
+                'Character_00007_transparent.webm', 'Character_00008_transparent.webm'
+            ];
+            
+            console.log('🎯 测试文件列表:', testFiles);
+            
+            for (const filename of testFiles) {
+                console.log(`🔍 测试检测: ${filename}`);
+                
+                // 清除之前的记录，强制重新检测
+                knownVideoFiles.delete(filename);
+                knownVideoFiles.delete(`${filename}_not_found`);
+                
+                try {
+                    const result = await tryLoadNewFile(filename);
+                    
+                    if (result) {
+                        console.log(`✅ 测试成功: ${filename} - 文件存在且已加载`);
+                    } else if (knownVideoFiles.has(`${filename}_not_found`)) {
+                        console.log(`❌ 测试失败: ${filename} - 文件不存在或无法加载`);
+                    } else {
+                        console.log(`⚠️ 测试跳过: ${filename} - 文件已存在`);
+                    }
+                } catch (error) {
+                    console.error(`💥 测试错误: ${filename}`, error);
+                }
+                
+                // 延迟，避免过快
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            const validFiles = Array.from(knownVideoFiles).filter(f => !f.endsWith('_not_found'));
+            console.log(`🎯 测试完成！当前有效文件: ${validFiles.length} 个`);
+            console.log('📋 有效文件列表:', validFiles);
+            
+            showNewVideoNotification(`测试完成：发现 ${validFiles.length} 个有效文件`);
+        }
+
+        // 强制全面扫描
+        async function forceFullScan() {
+            console.log('💪 S键触发：强制全面扫描所有可能的文件...');
+            showNewVideoNotification('正在执行强制全面扫描...');
+            
+            // 记录检测前的状态
+            const beforeCount = creatures.length;
+            console.log(`🎯 当前已加载文件数量: ${beforeCount}`);
+            
+            // 完全清空检测缓存
+            console.log('🗑️ 完全清空检测缓存...');
+            knownVideoFiles.clear();
+            
+            // 重新记录已加载的文件
+            const loadedFiles = new Set();
+            creatures.forEach(creature => {
+                if (creature.video && creature.video.src) {
+                    const filename = creature.video.src.split('/').pop();
+                    loadedFiles.add(filename);
+                    knownVideoFiles.add(filename);
+                }
+            });
+            
+            console.log('📋 已加载的文件:', Array.from(loadedFiles));
+            
+            // 执行最全面的扫描
+            await performComprehensiveScan();
+            
+            // 统计结果
+            const afterCount = creatures.length;
+            const newFilesFound = afterCount - beforeCount;
+            
+            console.log(`💪 强制全面扫描完成！新发现 ${newFilesFound} 个视频文件`);
+            console.log(`📊 总文件数量: ${beforeCount} → ${afterCount}`);
+            
+            if (newFilesFound > 0) {
+                showNewVideoNotification(`💪 强制扫描成功：发现 ${newFilesFound} 个新文件！`);
+            } else {
+                showNewVideoNotification('强制扫描完成：未发现新文件');
+            }
+        }
+
+        // 显示新视频通知
+        function showNewVideoNotification(filename) {
+            // 创建临时通知元素
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: rgba(0, 150, 255, 0.9);
+                color: white;
+                padding: 10px 15px;
+                border-radius: 5px;
+                font-size: 14px;
+                z-index: 200;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.textContent = `发现新海洋生物: ${filename}`;
+            
+            // 添加动画样式
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            document.body.appendChild(notification);
+            
+            // 3秒后自动移除通知
+            setTimeout(() => {
+                notification.style.animation = 'slideIn 0.3s ease-out reverse';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                    if (style.parentNode) {
+                        style.parentNode.removeChild(style);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // 检测协议并给出相应提示
+        function checkProtocolAndNotify() {
+            const isFileProtocol = window.location.protocol === 'file:';
+            
+            if (isFileProtocol) {
+                console.log('🎮 检测到FILE协议，启用轻量级检测模式');
+                showNewVideoNotification(`🚀 ${useFsAccess ? '目录直读监听' : '自动监听'}：每${Math.round(monitorIntervalMs/1000)}秒扫描，F键立即检测，可在帮助面板设置间隔`);
+            } else {
+                console.log('🌐 检测到HTTP协议，启用轻量级检测模式');
+                showNewVideoNotification(`🚀 ${useFsAccess ? '目录直读监听' : '自动监听'}：每${Math.round(monitorIntervalMs/1000)}秒扫描，F键立即检测，可在帮助面板设置间隔`);
+            }
+        }
+
+        // 更新FPS显示
+        function updateFPS(currentTime) {
+            frameCount++;
+            
+            if (currentTime - lastFpsUpdate >= 1000) { // 每秒更新一次
+                const fps = Math.round(frameCount * 1000 / (currentTime - lastFpsUpdate));
+                document.getElementById('fps-counter').textContent = fps;
+                
+                // 性能监控：如果FPS过低且生物数量较多，显示警告
+                if (fps < 30 && creatures.length > 20) {
+                    showPerformanceWarning();
+                }
+                
+                frameCount = 0;
+                lastFpsUpdate = currentTime;
+            }
+        }
+
+        // 显示性能警告
+        let performanceWarningShown = false;
+        function showPerformanceWarning() {
+            if (!SHOW_PERFORMANCE_WARNING) return;
+            if (performanceWarningShown) return;
+            
+            const warning = document.getElementById('performance-warning');
+            if (!warning) return;
+            warning.style.display = 'block';
+            performanceWarningShown = true;
+            
+            // 5秒后自动隐藏
+            setTimeout(() => {
+                warning.style.display = 'none';
+                // 10分钟后允许再次显示警告
+                setTimeout(() => {
+                    performanceWarningShown = false;
+                }, 600000);
+            }, 5000);
+        }
+
+        // 动画循环
+        function animate(currentTime = 0) {
+            // 更新全局时间（秒）供正弦LFO使用
+            globalTime = currentTime / 1000;
+            // 性能优化：只有当有生物时才清空和重绘画布
+            if (creatures.length > 0) {
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 更新和绘制所有生物
+                for (let i = creatures.length - 1; i >= 0; i--) {
+                    const creature = creatures[i];
+                    
+                    // 检查视频是否仍然有效
+                    if (creature.video.error || creature.video.ended) {
+                        // 移除无效的生物
+                        creatures.splice(i, 1);
+                        updateCreatureCount();
+                        continue;
+                    }
+                    
+                    creature.update();
+                    creature.draw();
+                }
+            }
+
+            // 更新FPS
+            updateFPS(currentTime);
+
+            // 继续动画循环
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 页面完全加载后，监听系统会自动处理video文件夹中的文件
+        // 移除原有的预设视频加载逻辑，改由监听系统统一处理
+
+        // ===== 监听间隔：本地存储与UI交互 =====
+        function loadMonitorIntervalFromStorage() {
+            try {
+                const saved = localStorage.getItem(MONITOR_INTERVAL_STORAGE_KEY);
+                const seconds = parseInt(saved || '3', 10);
+                if (Number.isFinite(seconds) && seconds >= 1 && seconds <= 60) {
+                    monitorIntervalMs = seconds * 1000;
+                } else {
+                    monitorIntervalMs = 3000;
+                }
+            } catch (e) {
+                monitorIntervalMs = 3000;
+            }
+
+            // 同步到帮助面板UI
+            const input = document.getElementById('monitor-interval-input');
+            const label = document.getElementById('current-interval-text');
+            if (input) input.value = String(Math.round(monitorIntervalMs / 1000));
+            if (label) label.textContent = `当前: ${Math.round(monitorIntervalMs/1000)}s`;
+        }
+
+        function setupMonitorControlsUI() {
+            const input = document.getElementById('monitor-interval-input');
+            const btn = document.getElementById('apply-interval-btn');
+            if (!input || !btn) return;
+
+            const apply = () => {
+                const seconds = parseInt(input.value, 10);
+                let clamped = isNaN(seconds) ? 3 : Math.max(1, Math.min(60, seconds));
+                input.value = String(clamped);
+                applyMonitorIntervalSeconds(clamped);
+            };
+
+            btn.addEventListener('click', apply);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') apply();
+            });
+        }
+
+        function applyMonitorIntervalSeconds(seconds) {
+            monitorIntervalMs = seconds * 1000;
+            try {
+                localStorage.setItem(MONITOR_INTERVAL_STORAGE_KEY, String(seconds));
+            } catch (e) {}
+
+            // 更新帮助面板显示
+            const label = document.getElementById('current-interval-text');
+            if (label) label.textContent = `当前: ${seconds}s`;
+
+            // 若正在监听则重启监听定时器
+            if (isMonitoring) {
+                if (videoMonitorInterval) clearInterval(videoMonitorInterval);
+                videoMonitorInterval = setInterval(() => {
+                    quickScanNewFiles();
+                }, monitorIntervalMs);
+                console.log(`🔁 已应用新的监听间隔: ${monitorIntervalMs}ms`);
+                showNewVideoNotification(`监听间隔已更新为 ${seconds}s`);
+            }
+            updateMonitorStatus();
+        }
+
+        // ===== 页面视频上限：本地存储与UI交互 =====
+        function loadCreatureLimitFromStorage() {
+            try {
+                const saved = localStorage.getItem(CREATURE_LIMIT_STORAGE_KEY);
+                const limit = parseInt(saved || '50', 10);
+                if (Number.isFinite(limit) && limit >= 1 && limit <= 100) {
+                    creatureLimit = limit;
+                } else {
+                    creatureLimit = 50;
+                }
+            } catch (e) {
+                creatureLimit = 50;
+            }
+
+            // 同步到帮助面板UI
+            const input = document.getElementById('creature-limit-input');
+            const label = document.getElementById('current-limit-text');
+            if (input) input.value = String(creatureLimit);
+            if (label) label.textContent = `当前: ${creatureLimit}`;
+        }
+
+        function setupLimitControlsUI() {
+            const input = document.getElementById('creature-limit-input');
+            const btn = document.getElementById('apply-limit-btn');
+            if (!input || !btn) return;
+
+            const apply = () => {
+                const limit = parseInt(input.value, 10);
+                let clamped = isNaN(limit) ? 50 : Math.max(1, Math.min(100, limit));
+                input.value = String(clamped);
+                applyCreatureLimit(clamped);
+            };
+
+            btn.addEventListener('click', apply);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') apply();
+            });
+        }
+
+        function applyCreatureLimit(limit) {
+            creatureLimit = limit;
+            try {
+                localStorage.setItem(CREATURE_LIMIT_STORAGE_KEY, String(limit));
+            } catch (e) {}
+
+            const label = document.getElementById('current-limit-text');
+            if (label) label.textContent = `当前: ${limit}`;
+
+            // 应用新的上限，若超出则立即裁剪
+            enforceCreatureLimit();
+        }
+
+        function enforceCreatureLimit() {
+            if (isPruningCreatures) return;
+            if (!Number.isFinite(creatureLimit) || creatureLimit < 1) return;
+            if (creatures.length <= creatureLimit) return;
+
+            isPruningCreatures = true;
+            try {
+                while (creatures.length > creatureLimit) {
+                    const removed = creatures.shift(); // 移除最早加入的
+                    if (!removed) break;
+                    const v = removed.video;
+                    try { if (v && typeof v.pause === 'function') v.pause(); } catch (e) {}
+                    try {
+                        if (v && v.src && v.src.startsWith('blob:')) {
+                            URL.revokeObjectURL(v.src);
+                        }
+                    } catch (e) {}
+                    // 可选：不从已知文件集合中删除，避免被再次重复加载
+                }
+            } finally {
+                // 更新数量显示
+                document.getElementById('creature-count').textContent = creatures.length;
+                isPruningCreatures = false;
+            }
+        }
+
+        // ===== 播放守护：确保视频持续播放 =====
+        function setupGlobalPlaybackGuards() {
+            if (playbackGuardsInitialized) return;
+            playbackGuardsInitialized = true;
+
+            // 页面重新可见时恢复播放
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    playAllVideos();
+                }
+            });
+
+            // 每0.5秒巡检一次（更及时）
+            if (playbackWatchdogInterval) clearInterval(playbackWatchdogInterval);
+            playbackWatchdogInterval = setInterval(() => {
+                const now = performance.now() / 1000;
+                for (const creature of creatures) {
+                    const v = creature.video;
+                    if (!v) continue;
+                    // 初始化上次时间
+                    if (v._lastT == null) v._lastT = 0;
+                    if (v._lastCheck == null) v._lastCheck = 0;
+
+                    const t = safeCurrentTime(v);
+
+                    // 近尾帧预跳转：避免卡在尾帧
+                    if (isNearEnd(v)) {
+                        nudgePlay(v, 0.001);
+                        continue;
+                    }
+                    // 若播放结束，立即回到起点并重播
+                    if (v.ended && v.loop !== false) {
+                        nudgePlay(v, 0.001);
+                        continue;
+                    }
+                    // 如果暂停或已具备播放条件，则尝试播放
+                    if ((v.paused || v.readyState >= 2) && !v.ended) {
+                        v.play().catch(() => {});
+                    }
+
+                    // 卡顿检测：播放时间长时间未前进
+                    if (Math.abs(t - v._lastT) < 0.001) {
+                        if (!v._stallSince) v._stallSince = now;
+                        if ((now - v._stallSince) > STALL_NUDGE_SECONDS) {
+                            nudgePlay(v, t + NUDGE_JUMP_SECONDS);
+                            v._stallSince = now;
+                        }
+                    } else {
+                        v._stallSince = null;
+                    }
+                    v._lastT = t;
+                    v._lastCheck = now;
+                }
+            }, 500);
+        }
+
+        function attachPlaybackGuards(video) {
+            if (!video) return;
+            // 强制保持循环打开
+            video.loop = true;
+            const tryPlay = () => {
+                if (video && video.readyState >= 2 && !video.ended) {
+                    video.play().catch(() => {});
+                }
+            };
+            const restartIfEnded = () => {
+                if (video.ended) {
+                    nudgePlay(video, 0.001);
+                }
+            };
+            const preWrap = () => {
+                if (isNearEnd(video)) {
+                    nudgePlay(video, 0.001);
+                }
+            };
+            video.addEventListener('pause', tryPlay);
+            video.addEventListener('waiting', tryPlay);
+            video.addEventListener('stalled', tryPlay);
+            video.addEventListener('suspend', tryPlay);
+            video.addEventListener('emptied', tryPlay);
+            video.addEventListener('canplay', tryPlay);
+            video.addEventListener('loadeddata', tryPlay);
+            video.addEventListener('ended', restartIfEnded);
+            // timeupdate频率足够，用于近尾帧预跳转
+            video.addEventListener('timeupdate', preWrap);
+            // 寄生在帧级回调上进一步增强守护
+            attachFrameGuard(video);
+            // 初始化防卡顿状态
+            video._lastT = 0;
+            video._lastCheck = performance.now() / 1000;
+            video._stallSince = null;
+        }
+
+        function attachFrameGuard(video) {
+            try {
+                if (!('requestVideoFrameCallback' in video)) return;
+                const onFrame = () => {
+                    if (!video) return;
+                    if (isNearEnd(video) || video.ended) {
+                        nudgePlay(video, 0.001);
+                    } else if ((video.paused || video.readyState >= 2) && !video.ended) {
+                        video.play().catch(() => {});
+                    }
+                    try { video.requestVideoFrameCallback(onFrame); } catch (e) {}
+                };
+                video.requestVideoFrameCallback(onFrame);
+            } catch (e) {}
+        }
+
+        function nudgePlay(video, newTime) {
+            try {
+                if (Number.isFinite(newTime)) {
+                    const dur = video.duration;
+                    if (isFinite(dur) && dur > 0) {
+                        // 限制到合法范围
+                        const target = Math.max(0.001, Math.min(dur - 0.01, newTime));
+                        if (!isNaN(target)) video.currentTime = target;
+                    } else {
+                        video.currentTime = 0.001;
+                    }
+                } else {
+                    video.currentTime = 0.001;
+                }
+            } catch (e) {}
+            video.play().catch(() => {});
+        }
+
+        function safeCurrentTime(video) {
+            try {
+                return Number(video.currentTime) || 0;
+            } catch (e) { return 0; }
+        }
+
+        function isNearEnd(video) {
+            try {
+                const dur = video.duration;
+                if (!isFinite(dur) || dur <= 0) return false;
+                const ct = video.currentTime || 0;
+                return (dur - ct) <= LOOP_WRAP_THRESHOLD && !video.paused;
+            } catch (e) { return false; }
+        }
+
+        // ===== File System Access API 目录授权与直读枚举 =====
+        async function requestDirectoryAccess() {
+            if (!('showDirectoryPicker' in window)) {
+                alert('当前浏览器不支持目录访问 API，请改用方案三（本地HTTP服务）或升级浏览器。');
+                return;
+            }
+            try {
+                // 让用户选择 video 目录
+                const handle = await window.showDirectoryPicker({ mode: 'read' });
+                // 简单校验末级目录名
+                if (!handle || handle.kind !== 'directory') {
+                    return;
+                }
+                dirHandle = handle;
+                useFsAccess = true;
+                const status = document.getElementById('dir-access-status');
+                if (status) status.textContent = '目录访问：已授权 (video)';
+                showNewVideoNotification('已授权目录访问：启用目录直读监听');
+
+                // 立即启动/重启监听
+                if (isMonitoring) {
+                    if (videoMonitorInterval) clearInterval(videoMonitorInterval);
+                    videoMonitorInterval = setInterval(() => {
+                        enumerateDirectoryAndLoad();
+                    }, monitorIntervalMs);
+                    enumerateDirectoryAndLoad();
+                } else {
+                    startVideoMonitoring();
+                }
+            } catch (err) {
+                console.warn('目录授权被取消或失败', err);
+            }
+        }
+
+        async function enumerateDirectoryAndLoad() {
+            if (!dirHandle) return;
+            try {
+                const entries = [];
+                // 读取目录条目
+                for await (const [name, handle] of dirHandle.entries()) {
+                    if (handle.kind === 'file' && name.toLowerCase().endsWith('.webm')) {
+                        entries.push({ name, handle });
+                    }
+                }
+
+                // 与已加载列表做差集
+                const currentSet = new Set(entries.map(e => e.name));
+
+                // 1) 新增文件：尚未加载的
+                for (const { name, handle } of entries) {
+                    if (loadedFilenames.has(name) || loadingFilenames.has(name)) {
+                        continue;
+                    }
+                    loadingFilenames.add(name);
+                    await loadFromFsFileHandle(handle, name);
+                }
+
+                // 2) 已删除文件：已加载但目录中不存在的，需移除
+                const toRemove = [];
+                creatures.forEach((creature, idx) => {
+                    const v = creature.video;
+                    const n = (v && v.dataset && v.dataset.filename)
+                        ? v.dataset.filename
+                        : (v && v.src ? v.src.split('/').pop() : null);
+                    if (n && !currentSet.has(n)) {
+                        toRemove.push({ idx, n });
+                    }
+                });
+
+                if (toRemove.length > 0) {
+                    // 从后往前移除，避免索引错位
+                    for (let i = toRemove.length - 1; i >= 0; i--) {
+                        const { idx, n } = toRemove[i];
+                        const video = creatures[idx].video;
+                        if (video && video.src && video.src.startsWith('blob:')) {
+                            URL.revokeObjectURL(video.src);
+                        }
+                        creatures.splice(idx, 1);
+                        loadedFilenames.delete(n);
+                        knownVideoFiles.delete(n);
+                        knownVideoFiles.delete(`${n}_not_found`);
+                        console.log(`🗑️ FS: 目录已删除 -> 移除 ${n}`);
+                    }
+                    updateCreatureCount();
+                }
+            } catch (e) {
+                console.warn('目录枚举失败', e);
+            }
+        }
+
+        async function loadFromFsFileHandle(fileHandle, filename) {
+            try {
+                const file = await fileHandle.getFile();
+                // 大小限制同上传逻辑
+                if (file.size > 50 * 1024 * 1024) return;
+                const blobUrl = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                video.src = blobUrl;
+                video.loop = true;
+                video.muted = true;
+                video.autoplay = true;
+                video.preload = 'auto';
+                video.playsInline = true;
+                // 记录来源文件名，便于去重
+                video.dataset.filename = filename;
+                let handled = false;
+                const onSuccess = () => {
+                    if (handled) return;
+                    if (video.videoWidth === 0 || video.videoHeight === 0) {
+                        console.warn('FS: 无效视频尺寸', filename);
+                        URL.revokeObjectURL(blobUrl);
+                        loadingFilenames.delete(filename);
+                        return;
+                    }
+                    handled = true;
+                    const creature = new Creature(video);
+                    creatures.push(creature);
+                    updateCreatureCount();
+                    loadedFilenames.add(filename);
+                    loadingFilenames.delete(filename);
+                    knownVideoFiles.add(filename);
+                    showNewVideoNotification(`成功加载: ${filename}`);
+                    attachPlaybackGuards(video);
+                };
+                video.addEventListener('loadedmetadata', onSuccess);
+                video.addEventListener('canplay', onSuccess);
+                video.addEventListener('loadeddata', onSuccess);
+
+                video.addEventListener('error', () => {
+                    if (handled) return;
+                    handled = true;
+                    console.warn('FS: 加载失败', filename);
+                    URL.revokeObjectURL(blobUrl);
+                    loadingFilenames.delete(filename);
+                });
+            } catch (e) {
+                console.warn('FS: 读取文件失败', filename, e);
+            }
+        }
+    </script>
+</body>
+</html>

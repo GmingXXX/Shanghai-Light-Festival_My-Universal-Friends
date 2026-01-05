@@ -1,0 +1,3449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>透明视频转换器 - 离线版</title>
+        <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin">
+        <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 40px 32px;
+            text-align: center;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .header .version {
+            font-size: 0.9rem;
+            color: #999;
+            font-weight: 500;
+        }
+
+        .main-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .upload-section {
+            margin-bottom: 32px;
+        }
+
+        .upload-area {
+            border: 3px dashed #d9d9d9;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #fafafa;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            user-select: none;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f8ff;
+            transform: translateY(-2px);
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e6f3ff;
+            transform: scale(1.02);
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .upload-text {
+            font-size: 1.3rem;
+            color: #333;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin: 24px 0;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            min-width: 120px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn:active {
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.secondary {
+            background: #6c757d;
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+        }
+
+        .settings-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+            border: 1px solid #e9ecef;
+            display: none;
+        }
+
+        .settings-panel.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .settings-panel h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .color-picker {
+            width: 50px;
+            height: 40px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-picker:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            margin: 10px 0;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .file-list {
+            margin-top: 32px;
+        }
+
+        .file-list h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .file-item {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 1px solid #f0f0f0;
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .file-info h4 {
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+            word-break: break-all;
+        }
+
+        .file-info p {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 4px;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            min-width: auto;
+        }
+
+        .status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .status.pending { background: #fff3cd; color: #856404; }
+        .status.processing { background: #d1ecf1; color: #0c5460; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+
+        .progress-container {
+            margin: 16px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background-image: linear-gradient(
+                -45deg,
+                rgba(255, 255, 255, .2) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255, 255, 255, .2) 50%,
+                rgba(255, 255, 255, .2) 75%,
+                transparent 75%,
+                transparent
+            );
+            background-size: 50px 50px;
+            animation: move 2s linear infinite;
+        }
+
+        @keyframes move {
+            0% { background-position: 0 0; }
+            100% { background-position: 50px 50px; }
+        }
+
+        .progress-text {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .progress-percentage {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .progress-stage {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        .progress-details {
+            font-size: 0.8rem;
+            color: #888;
+            font-style: italic;
+        }
+
+        .preview-container {
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .preview-video {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            background: 
+                repeating-conic-gradient(#f0f0f0 0% 25%, white 0% 50%) 
+                50% / 20px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .download-section {
+            margin-top: 24px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+
+        .toast.warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: #333;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .feature-notice {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 1px solid #bbdefb;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .feature-notice h3 {
+            color: #1976d2;
+            margin-bottom: 12px;
+            font-size: 1.2rem;
+        }
+
+        .feature-notice p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .feature-item {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .feature-item .icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .feature-item h4 {
+            color: #333;
+            margin-bottom: 4px;
+            font-size: 0.9rem;
+        }
+
+        .feature-item p {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header {
+                padding: 24px 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 280px;
+            }
+
+            .file-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .file-actions {
+                align-self: stretch;
+            }
+
+            .btn-small {
+                flex: 1;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎬 透明视频转换器</h1>
+            <p>将黑底视频一键转为透明背景，支持批量处理</p>
+            <p class="version">离线版 v1.0 - 无需安装，打开即用</p>
+        </div>
+
+        <div class="main-content">
+            <div class="feature-notice">
+                <h3>🚀 完全离线运行</h3>
+                <p>这是一个完全独立的HTML文件，使用浏览器的原生能力处理视频</p>
+                <p>无需安装任何软件，支持Chrome、Firefox、Safari、Edge等现代浏览器</p>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="icon">📁</div>
+                        <h4>多格式支持</h4>
+                        <p>MP4, MOV, WebM</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">🎨</div>
+                        <h4>参数调节</h4>
+                        <p>颜色、容差、平滑</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">👀</div>
+                        <h4>实时预览</h4>
+                        <p>棋盘格背景预览</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">⚡</div>
+                        <h4>本地处理</h4>
+                        <p>数据不上传云端</p>
+                    </div>
+                    <div class="feature-item">
+                        <div class="icon">📁</div>
+                        <h4>智能下载</h4>
+                        <p>自动保存到video文件夹</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">🎥</div>
+                    <div class="upload-text">点击或拖拽视频文件到此处</div>
+                    <div class="upload-hint">
+                        支持 MP4, MOV, WebM 格式<br>
+                        建议文件大小不超过 100MB，时长不超过 60 秒<br>
+                        可同时处理多个文件
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <label class="btn" id="selectFileBtn" for="fileInput">
+                            📁 选择文件
+                        </label>
+                    </div>
+                    <input type="file" class="file-input" id="fileInput" multiple accept=".mp4,.mov,.webm,video/mp4,video/quicktime,video/webm">
+                </div>
+
+                <div class="controls">
+                    <button class="btn" onclick="alert('JavaScript工作正常！')">
+                        🧪 JS测试
+                    </button>
+                    <button class="btn" id="settingsBtn" onclick="toggleSettings()">
+                        ⚙️ 高级设置
+                    </button>
+                    <button class="btn secondary" onclick="runDiagnosticTest()">
+                        🔧 系统测试
+                    </button>
+                    <button class="btn secondary" onclick="testUploadFunction()">
+                        🔍 测试上传
+                    </button>
+                    <button class="btn" id="watchSourceBtn" style="background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);">
+                        📡 监控 source 目录
+                    </button>
+                    <button class="btn" id="pickOutputBtn" style="background: linear-gradient(135deg, #ff7f50 0%, #ffb199 100%);">
+                        📁 设置输出目录(video)
+                    </button>
+                    <span id="watchStatusText" style="align-self:center; color:#155724; font-weight:600;"></span>
+                </div>
+
+                <div class="settings-panel" id="settingsPanel">
+                    <h3>⚙️ 转换参数设置</h3>
+                    
+                    <div class="setting-group">
+                        <label for="colorPicker">背景颜色：</label>
+                        <div class="color-picker-wrapper">
+                            <input type="color" id="colorPicker" class="color-picker" value="#000000">
+                            <span id="colorValue">#000000</span>
+                        </div>
+                        <small style="color: #666;">选择要移除的背景颜色（默认为黑色）</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="toleranceSlider">容差：<span id="toleranceValue">50</span></label>
+                        <input type="range" id="toleranceSlider" class="slider" min="0" max="100" value="50">
+                        <small style="color: #666;">调整颜色匹配的灵敏度，值越大匹配范围越广</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="featherSlider">边缘平滑：<span id="featherValue">3</span></label>
+                        <input type="range" id="featherSlider" class="slider" min="0" max="10" value="3">
+                        <small style="color: #666;">调整抠像后边缘的柔化程度</small>
+                    </div>
+                    <div class="setting-group">
+                        <label>
+                            <input type="checkbox" id="wmEnabled" checked>
+                            去除左上角水印
+                        </label>
+                        <small style="color: #666;">默认区域 x=0.8%、y=0.8%、w=16%、h=6.5%</small>
+                    </div>
+                    <div class="setting-group" id="wmFields">
+                        <label>水印区域（百分比 %）</label>
+                        <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end;">
+                            <div>
+                                <label for="wmX">X%</label>
+                                <input type="number" id="wmX" value="0.8" min="0" max="100" step="0.1" style="width: 90px; padding:6px;">
+                            </div>
+                            <div>
+                                <label for="wmY">Y%</label>
+                                <input type="number" id="wmY" value="0.8" min="0" max="100" step="0.1" style="width: 90px; padding:6px;">
+                            </div>
+                            <div>
+                                <label for="wmW">W%</label>
+                                <input type="number" id="wmW" value="16.0" min="0.1" max="100" step="0.1" style="width: 90px; padding:6px;">
+                            </div>
+                            <div>
+                                <label for="wmH">H%</label>
+                                <input type="number" id="wmH" value="6.5" min="0.1" max="100" step="0.1" style="width: 90px; padding:6px;">
+                            </div>
+                        </div>
+                        <label for="wmFeather">水印羽化(px)：<span id="wmFeatherValue">1.5</span></label>
+                        <input type="range" id="wmFeather" class="slider" min="0" max="8" step="0.5" value="1.5">
+                        <small style="color: #666;">加大可减弱边界痕迹；为0则锐利切除</small>
+                    </div>
+                    <div class="setting-group">
+                        <button class="btn" id="roiPickBtn" style="padding:10px 16px; min-width:auto;">
+                            🖱️ 框选区域
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="file-list hidden" id="fileList">
+                <h3>📋 文件列表</h3>
+                <div style="background: #e8f5e8; border: 1px solid #c3e6c3; border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 0.9rem; color: #2d5a2d;">
+                    <strong>💡 下载说明：</strong><br>
+                    • 普通下载：保持原文件名<br>
+                    • 下载到video文件夹：重命名为 1.webm, 2.webm ... (最多200个)<br>
+                    • 批量下载到video文件夹：从序号1开始依次命名<br>
+                    • 可点击"重置序号"按钮重新从1开始计数
+                </div>
+                <div id="filesContainer"></div>
+                
+                <div class="controls">
+                    <button class="btn" id="convertAllBtn" onclick="convertAllFiles()">
+                        🚀 开始转换
+                    </button>
+                    <button class="btn secondary" onclick="downloadAll()">
+                        📦 批量下载
+                    </button>
+                    <button class="btn" onclick="downloadAllToFolder()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                        📁 下载到video文件夹
+                    </button>
+                    <button class="btn secondary" onclick="resetDownloadCounter(); showToast('下载序号已重置为1', 'success');" title="重置下载序号从1开始">
+                        🔄 重置序号
+                    </button>
+                    <button class="btn danger" onclick="clearAllFiles()">
+                        🗑️ 清空所有
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast" id="toast"></div>
+
+    <!-- 加载覆盖层 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div>
+            <div class="loading-spinner"></div>
+            <p style="color: white; margin-top: 16px; text-align: center;">正在处理视频...</p>
+        </div>
+    </div>
+
+    <script>
+        // 尝试注册 COOP/COEP Service Worker，启用 crossOriginIsolated 以使用 SharedArrayBuffer
+        (function registerCOISW(){
+            // file:// 下 SW 会报错，直接吞掉
+            if (!('serviceWorker' in navigator)) return;
+            try { navigator.serviceWorker.register('./coi-serviceworker.js'); } catch (_) {}
+        })();
+        // 全局变量
+        let selectedFiles = [];
+        let processedFiles = new Map();
+        let currentSettings = {
+            color: '#000000',
+            tolerance: 50,
+            feather: 3,
+            wmEnabled: true,
+            wmX: 0.8,
+            wmY: 0.8,
+            wmW: 16.0,
+            wmH: 6.5,
+            wmFeather: 1.5
+        };
+
+        // wasm/Worker FFmpeg 支持
+        let ffmpegWorker = null;
+        let ffmpegReady = false;
+        let currentPipeline = 'auto'; // 'wasm' | 'canvas' | 'auto'
+        async function ensureFfmpegWorker() {
+            if (ffmpegWorker) return ffmpegWorker;
+            try {
+                ffmpegWorker = new Worker('./ffmpeg-worker.js');
+                // 探测
+                ffmpegReady = await new Promise((resolve) => {
+                    const onMsg = (ev) => {
+                        const d = ev.data || {};
+                        if (d.type === 'probe:ok') {
+                            ffmpegWorker.removeEventListener('message', onMsg);
+                            resolve(true);
+                        } else if (d.type === 'error') {
+                            ffmpegWorker.removeEventListener('message', onMsg);
+                            resolve(false);
+                        }
+                    };
+                    ffmpegWorker.addEventListener('message', onMsg);
+                    ffmpegWorker.postMessage({ type: 'probe' });
+                    setTimeout(() => { ffmpegWorker.removeEventListener('message', onMsg); resolve(false); }, 30000);
+                });
+                if (!ffmpegReady) {
+                    try { ffmpegWorker.terminate(); } catch (_) {}
+                    ffmpegWorker = null;
+                }
+            } catch (_) {
+                ffmpegWorker = null;
+                ffmpegReady = false;
+            }
+            return ffmpegWorker;
+        }
+
+        // 方案二：内联 Web Worker + 可见性降频
+        let pixelWorker = null;
+        let workerBusy = false;
+        let pageHidden = false;
+        let __visibleWaitResolvers = [];
+        function waitForVisible() {
+            if (!pageHidden) return Promise.resolve();
+            return new Promise(function(resolve){ __visibleWaitResolvers.push(resolve); });
+        }
+        let __bgToastShown = false;
+        document.addEventListener('visibilitychange', function() {
+            pageHidden = document.hidden;
+            if (currentPipeline === 'wasm') {
+                // wasm 管线在后台继续处理，仅提示 UI 进度可能延迟
+                if (pageHidden && !__bgToastShown) {
+                    try { showToast('后台处理中（UI进度可能延迟）', 'info'); } catch (_) {}
+                    __bgToastShown = true;
+                }
+                if (!pageHidden && __bgToastShown) { __bgToastShown = false; }
+            } else {
+                if (pageHidden) {
+                    if (!__bgToastShown) {
+                        try { showToast('后台暂停处理中，切回前台继续', 'warning'); } catch (_) {}
+                        __bgToastShown = true;
+                    }
+                } else {
+                    if (__bgToastShown) {
+                        try { showToast('已恢复处理', 'success'); } catch (_) {}
+                        __bgToastShown = false;
+                    }
+                }
+            }
+            if (!pageHidden && __visibleWaitResolvers.length > 0) {
+                const pending = __visibleWaitResolvers.slice();
+                __visibleWaitResolvers.length = 0;
+                pending.forEach(function(fn){ try { fn(); } catch (_) {} });
+            }
+        });
+
+        // 监控 source 目录相关
+        let sourceDirHandle = null;
+        let watchTimer = null;
+        let isWatching = false;
+        let watchIntervalMs = 3000; // 自适应区间：前台 3s，后台放缓
+        const maxPickPerScan = 5; // 单轮最多拾取文件数，避免堆积
+        const uploadedFingerprintSet = new Set(); // 内存去重
+        const uploadedFingerprintKey = 'alphavid_uploaded_fingerprints_v1'; // 本地持久化
+        const pendingStableMap = new Map(); // 跟踪待稳定文件 {key -> {size, seenCount}}
+
+        // 从 localStorage 恢复已上传指纹
+        function restoreUploadedFingerprints() {
+            try {
+                const raw = localStorage.getItem(uploadedFingerprintKey);
+                if (raw) {
+                    const arr = JSON.parse(raw);
+                    if (Array.isArray(arr)) arr.forEach(k => uploadedFingerprintSet.add(k));
+                }
+            } catch (_) {}
+        }
+
+        function persistUploadedFingerprints() {
+            try {
+                const arr = Array.from(uploadedFingerprintSet);
+                localStorage.setItem(uploadedFingerprintKey, JSON.stringify(arr));
+            } catch (_) {}
+        }
+
+        function updateWatchStatus(msg) {
+            const el = document.getElementById('watchStatusText');
+            if (el) el.textContent = msg || '';
+        }
+
+        function makeFileKey(name, size, mtime) {
+            return `${name}__${size}__${mtime}`;
+        }
+
+        async function pickSourceDirectory() {
+            if (!window.showDirectoryPicker) {
+                showToast('当前浏览器不支持目录访问，无法开启监控', 'error');
+                return null;
+            }
+            try {
+                const handle = await window.showDirectoryPicker({ id: 'alphavid-source', mode: 'read' });
+                sourceDirHandle = handle;
+                showToast('已选择 source 目录', 'success');
+                return handle;
+            } catch (e) {
+                showToast('未选择 source 目录', 'warning');
+                return null;
+            }
+        }
+
+        async function scanSourceOnce() {
+            if (!sourceDirHandle) return;
+            try {
+                const newFiles = [];
+                let picked = 0;
+                for await (const [name, handle] of sourceDirHandle.entries()) {
+                    if (handle.kind !== 'file') continue;
+                    if (!name.toLowerCase().endsWith('.mp4')) continue;
+                    // 读取元信息
+                    const file = await handle.getFile();
+                    const key = makeFileKey(name, file.size, file.lastModified);
+                    // 已处理过跳过
+                    if (uploadedFingerprintSet.has(key)) continue;
+
+                    // 稳定性判断：同样的 name 如果 size 连续 >=2 次一致才认定稳定
+                    const prev = pendingStableMap.get(name);
+                    if (prev && prev.size === file.size) {
+                        prev.seen = (prev.seen || 1) + 1;
+                    } else {
+                        pendingStableMap.set(name, { size: file.size, seen: 1 });
+                    }
+                    const curr = pendingStableMap.get(name);
+                    if (curr.seen < 2) continue; // 未稳定
+
+                    newFiles.push(file);
+                    picked++;
+                    if (picked >= maxPickPerScan) break;
+                }
+
+                if (newFiles.length > 0) {
+                    // 入队上传
+                    processFileSelection(newFiles);
+                    // 标记指纹（使用本次文件的元信息）
+                    newFiles.forEach(f => {
+                        const k = makeFileKey(f.name, f.size, f.lastModified);
+                        uploadedFingerprintSet.add(k);
+                    });
+                    persistUploadedFingerprints();
+                    updateWatchStatus(`已发现并加入 ${newFiles.length} 个新文件`);
+                    // 自动触发转换（若有未完成）
+                    autoConvertIfNeeded();
+                } else {
+                    updateWatchStatus('监控中… 未发现新文件');
+                }
+            } catch (e) {
+                console.warn('扫描 source 目录失败:', e);
+                updateWatchStatus('扫描失败，等待重试…');
+            }
+        }
+
+        function startWatchingSource() {
+            if (!sourceDirHandle) return;
+            if (isWatching) return;
+            isWatching = true;
+            updateWatchStatus('监控中…');
+            const tick = async () => {
+                if (!isWatching) return;
+                await scanSourceOnce();
+                const delay = pageHidden ? Math.min(10000, watchIntervalMs * 2) : watchIntervalMs;
+                watchTimer = setTimeout(tick, delay);
+            };
+            tick();
+        }
+
+        function stopWatchingSource() {
+            isWatching = false;
+            if (watchTimer) clearTimeout(watchTimer);
+            watchTimer = null;
+            updateWatchStatus('已停止监控');
+        }
+
+        // 自动触发转换与下载
+        let autoConvertPending = false;
+        let autoDownloadLocked = false;
+        function resetAutoDownloadLock() { autoDownloadLocked = false; }
+        const immediatePerFileSave = true; // 每个文件完成后立即保存
+        function autoConvertIfNeeded() {
+            if (autoConvertPending) return;
+            autoConvertPending = true;
+            setTimeout(async () => {
+                try {
+                    // 若存在未处理成功的文件，则触发一次批量转换
+                    const need = selectedFiles.filter(f => {
+                        const pf = processedFiles.get(f.name);
+                        return !pf || pf.status !== 'success';
+                    });
+                    if (need.length > 0) {
+                        await convertAllFiles();
+                    }
+
+                    // 检查全部是否成功，如是则自动下载
+                    const allDone = selectedFiles.length > 0 && selectedFiles.every(f => {
+                        const pf = processedFiles.get(f.name);
+                        return pf && pf.status === 'success';
+                    });
+                    // 若启用逐个保存，则跳过“全部完成后批量下载”的逻辑
+                    if (!immediatePerFileSave) {
+                        if (allDone && !autoDownloadLocked) {
+                            if (!outputDirHandle) {
+                                showToast('请先点击“设置输出目录(video)”', 'warning');
+                            } else {
+                                await downloadAllToFolder();
+                                autoDownloadLocked = true;
+                            }
+                        }
+                    }
+                } finally {
+                    autoConvertPending = false;
+                }
+            }, 500);
+        }
+
+        function toggleWatch() {
+            const btn = document.getElementById('watchSourceBtn');
+            if (!isWatching) {
+                // 开启
+                pickSourceDirectory().then(handle => {
+                    if (!handle) return;
+                    restoreUploadedFingerprints();
+                    startWatchingSource();
+                    if (btn) btn.textContent = '⏸ 停止监控';
+                });
+            } else {
+                stopWatchingSource();
+                if (btn) btn.textContent = '📡 监控 source 目录';
+            }
+        }
+
+        function ensurePixelWorker() {
+            if (pixelWorker) return pixelWorker;
+            const workerCode = `
+                function hexToRgb(hex){
+                    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                    return r ? { r: parseInt(r[1],16), g: parseInt(r[2],16), b: parseInt(r[3],16) } : { r:0,g:0,b:0 };
+                }
+                self.onmessage = function(e){
+                    const { type, payload } = e.data || {}; 
+                    if (type === 'process') {
+                        try {
+                            const { buffer, width, height, color, tolerance255, feather } = payload;
+                            const data = new Uint8ClampedArray(buffer);
+                            const tgt = hexToRgb(color);
+                            const tol = tolerance255;
+                            const featherRange = feather * 10;
+                            for (let i = 0; i < data.length; i += 4) {
+                                const r = data[i], g = data[i+1], b = data[i+2];
+                                const diff = Math.sqrt(
+                                    Math.pow(r - tgt.r, 2) +
+                                    Math.pow(g - tgt.g, 2) +
+                                    Math.pow(b - tgt.b, 2)
+                                );
+                                if (diff <= tol) {
+                                    let alpha = 0;
+                                    if (feather > 0) {
+                                        if (diff > tol - featherRange) {
+                                            alpha = (diff - (tol - featherRange)) / featherRange;
+                                        }
+                                    }
+                                    data[i+3] = Math.floor(alpha * 255);
+                                }
+                            }
+                            self.postMessage({ type:'done', buffer: data.buffer, width, height }, [data.buffer]);
+                        } catch (err) {
+                            self.postMessage({ type:'error', message: err && err.message ? err.message : 'unknown' });
+                        }
+                    }
+                };
+            `;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            const url = URL.createObjectURL(blob);
+            pixelWorker = new Worker(url);
+            URL.revokeObjectURL(url);
+            return pixelWorker;
+        }
+
+        function processFrameInWorker(imageData) {
+            return new Promise((resolve, reject) => {
+                try {
+                    ensurePixelWorker();
+                    if (!pixelWorker) {
+                        reject(new Error('Worker 初始化失败'));
+                        return;
+                    }
+                    const payload = {
+                        buffer: imageData.data.buffer,
+                        width: imageData.width,
+                        height: imageData.height,
+                        color: currentSettings.color,
+                        tolerance255: currentSettings.tolerance / 100 * 255,
+                        feather: currentSettings.feather || 0
+                    };
+                    workerBusy = true;
+                    const onMessage = function(ev){
+                        const d = ev.data || {};
+                        if (d.type === 'done') {
+                            pixelWorker.removeEventListener('message', onMessage);
+                            workerBusy = false;
+                            const out = new ImageData(new Uint8ClampedArray(d.buffer), d.width, d.height);
+                            resolve(out);
+                        } else if (d.type === 'error') {
+                            pixelWorker.removeEventListener('message', onMessage);
+                            workerBusy = false;
+                            reject(new Error(d.message || 'Worker 处理失败'));
+                        }
+                    };
+                    pixelWorker.addEventListener('message', onMessage);
+                    pixelWorker.postMessage({ type:'process', payload }, [payload.buffer]);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
+        // 测试JavaScript是否正常工作
+        function testJavaScript() {
+            alert('JavaScript正常工作！');
+            console.log('JavaScript测试通过');
+        }
+
+        // 立即执行的测试
+        console.log('脚本开始加载...');
+        
+        // 确保基本功能可用
+        window.testJS = function() {
+            alert('全局函数可用！');
+        };
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM加载完成，开始初始化...');
+            
+            try {
+                initializeEventListeners();
+                console.log('事件监听器初始化完成');
+                
+                initializeSettings();
+                console.log('设置初始化完成');
+                
+                checkBrowserSupport();
+                console.log('浏览器支持检查完成');
+                
+                console.log('所有初始化完成');
+            } catch (error) {
+                console.error('初始化过程中出现错误:', error);
+                alert('页面初始化失败: ' + error.message);
+            }
+        });
+
+        // 检查浏览器支持
+        function checkBrowserSupport() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx || !window.URL || !window.URL.createObjectURL) {
+                showToast('您的浏览器版本过低，请使用现代浏览器', 'error');
+                return false;
+            }
+            
+            // 检查 MediaRecorder 支持
+            if (!window.MediaRecorder) {
+                showToast('浏览器不支持视频录制功能', 'error');
+                return false;
+            }
+            
+            // 检查支持的视频格式
+            const supportedFormats = [];
+            const testFormats = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8', 
+                'video/webm',
+                'video/mp4;codecs=h264'
+            ];
+            
+            testFormats.forEach(format => {
+                if (MediaRecorder.isTypeSupported(format)) {
+                    supportedFormats.push(format);
+                }
+            });
+            
+            console.log('支持的视频格式:', supportedFormats);
+            
+            if (supportedFormats.length === 0) {
+                showToast('浏览器不支持所需的视频格式', 'error');
+                return false;
+            }
+            
+            // 显示浏览器信息
+            console.log('浏览器信息:', {
+                userAgent: navigator.userAgent,
+                supportedFormats: supportedFormats,
+                canvasSupport: !!ctx,
+                mediaRecorderSupport: !!window.MediaRecorder
+            });
+            
+            return true;
+        }
+
+        // 触发文件选择的统一函数
+        function triggerFileSelection() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput) {
+                console.error('File input not found');
+                showToast('文件输入元素未找到', 'error');
+                return;
+            }
+            
+            try {
+                // 优先尝试现代API：showPicker（更稳定，需安全上下文）
+                if (typeof fileInput.showPicker === 'function') {
+                    fileInput.showPicker();
+                    console.log('文件对话框触发方式0: showPicker');
+                    return;
+                }
+                // 方法1: 直接点击
+                fileInput.click();
+                console.log('文件对话框触发方式1: 直接点击');
+            } catch (error1) {
+                console.warn('方式1失败:', error1);
+                
+                try {
+                    // 方法2: 创建点击事件
+                    const clickEvent = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    fileInput.dispatchEvent(clickEvent);
+                    console.log('文件对话框触发方式2: 事件分发');
+                } catch (error2) {
+                    console.warn('方式2失败:', error2);
+                    
+                    try {
+                        // 方法3: 焦点后点击
+                        fileInput.focus();
+                        fileInput.click();
+                        console.log('文件对话框触发方式3: 焦点后点击');
+                    } catch (error3) {
+                        console.error('所有方式都失败:', error3);
+                        showToast('无法打开文件选择对话框，请尝试刷新页面', 'error');
+                    }
+                }
+            }
+        }
+
+        // 初始化事件监听器
+        function initializeEventListeners() {
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            const watchBtn = document.getElementById('watchSourceBtn');
+            const pickOutputBtn = document.getElementById('pickOutputBtn');
+            const roiPickBtn = document.getElementById('roiPickBtn');
+
+            if (!uploadArea || !fileInput) {
+                console.error('Upload area or file input not found');
+                return;
+            }
+
+            // 上传区域点击事件 - 修复事件冲突问题（使用冒泡阶段）
+            uploadArea.addEventListener('click', function(e) {
+                // 检查点击的是否为按钮或其子元素
+                if (
+                    e.target && (
+                        e.target.tagName === 'BUTTON' ||
+                        (e.target.closest && e.target.closest('button')) ||
+                        e.target.tagName === 'LABEL' ||
+                        (e.target.closest && e.target.closest('label'))
+                    )
+                ) {
+                    // 如果点击的是按钮，不阻止默认行为，让按钮正常工作
+                    console.log('Button clicked, allowing default behavior');
+                    return;
+                }
+                
+                // 只有点击上传区域其他部分时才阻止默认行为并触发文件选择
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Upload area clicked (not button)');
+                
+                // 触发文件选择
+                triggerFileSelection();
+            }, false);
+
+            // 备用点击事件（mousedown不再阻断按钮行为，避免系统默认被拦截）
+            uploadArea.addEventListener('mousedown', function(e) {
+                if (e.button === 0) {
+                    // 点击上传区域空白时，允许后续click触发统一逻辑
+                    // 不在此处阻止默认，避免某些浏览器阻止file input弹窗
+                    if (e.target && (e.target.tagName === 'BUTTON' || (e.target.closest && e.target.closest('button')))) {
+                        return;
+                    }
+                }
+            });
+
+            // 拖拽事件
+            uploadArea.addEventListener('dragover', handleDragOver);
+            uploadArea.addEventListener('dragenter', handleDragOver);
+            uploadArea.addEventListener('dragleave', handleDragLeave);
+            uploadArea.addEventListener('drop', handleDrop);
+
+            // 阻止全局拖拽
+            document.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            document.addEventListener('drop', function(e) {
+                e.preventDefault();
+            });
+
+            // 文件选择
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // 选择文件按钮点击事件
+            const selectFileBtn = document.getElementById('selectFileBtn');
+            if (selectFileBtn) {
+                selectFileBtn.addEventListener('click', function() {
+                    console.log('Select file button clicked');
+                    triggerFileSelection();
+                });
+            }
+
+            if (watchBtn) {
+                watchBtn.addEventListener('click', toggleWatch);
+            }
+
+            if (pickOutputBtn) {
+                pickOutputBtn.addEventListener('click', () => ensureOutputDirectory(true));
+            }
+
+            if (roiPickBtn) {
+                roiPickBtn.addEventListener('click', startRoiPicking);
+            }
+
+            console.log('Event listeners initialized successfully');
+        }
+
+        // ROI 框选交互
+        let roiPicking = false;
+        let roiStart = null;
+        let roiOverlay = null;
+        function startRoiPicking() {
+            if (roiPicking) return;
+            // 找到第一条“预览视频”或创建一个可视化画布
+            const anyPreview = document.querySelector('.preview-video');
+            const host = anyPreview ? anyPreview.parentElement : document.querySelector('.upload-area');
+            if (!host) { showToast('没有可用于框选的区域（请先转换预览，或点击上传区域框选）', 'warning'); return; }
+            const rect = host.getBoundingClientRect();
+
+            // 创建覆盖层
+            roiOverlay = document.createElement('div');
+            roiOverlay.style.position = 'fixed';
+            roiOverlay.style.left = rect.left + 'px';
+            roiOverlay.style.top = rect.top + 'px';
+            roiOverlay.style.width = rect.width + 'px';
+            roiOverlay.style.height = rect.height + 'px';
+            roiOverlay.style.cursor = 'crosshair';
+            roiOverlay.style.zIndex = '2500';
+            roiOverlay.style.background = 'transparent';
+            document.body.appendChild(roiOverlay);
+
+            const box = document.createElement('div');
+            box.style.position = 'absolute';
+            box.style.border = '2px dashed #667eea';
+            box.style.background = 'rgba(102,126,234,0.15)';
+            box.style.pointerEvents = 'none';
+            roiOverlay.appendChild(box);
+
+            const toLocal = (clientX, clientY) => ({
+                x: Math.max(0, Math.min(rect.width, clientX - rect.left)),
+                y: Math.max(0, Math.min(rect.height, clientY - rect.top))
+            });
+
+            const onDown = (e) => {
+                roiPicking = true;
+                const p = toLocal(e.clientX, e.clientY);
+                roiStart = p;
+                box.style.left = p.x + 'px';
+                box.style.top = p.y + 'px';
+                box.style.width = '0px';
+                box.style.height = '0px';
+                e.preventDefault();
+            };
+            const onMove = (e) => {
+                if (!roiPicking || !roiStart) return;
+                const p = toLocal(e.clientX, e.clientY);
+                const x = Math.min(roiStart.x, p.x);
+                const y = Math.min(roiStart.y, p.y);
+                const w = Math.abs(p.x - roiStart.x);
+                const h = Math.abs(p.y - roiStart.y);
+                box.style.left = x + 'px';
+                box.style.top = y + 'px';
+                box.style.width = w + 'px';
+                box.style.height = h + 'px';
+            };
+            const finish = (p) => {
+                roiPicking = false;
+                // 计算百分比并写入设置
+                const x = Math.min(roiStart.x, p.x);
+                const y = Math.min(roiStart.y, p.y);
+                const w = Math.abs(p.x - roiStart.x);
+                const h = Math.abs(p.y - roiStart.y);
+                if (w > 2 && h > 2) {
+                    currentSettings.wmEnabled = true;
+                    document.getElementById('wmEnabled').checked = true;
+                    const xPct = (x / rect.width) * 100;
+                    const yPct = (y / rect.height) * 100;
+                    const wPct = (w / rect.width) * 100;
+                    const hPct = (h / rect.height) * 100;
+                    currentSettings.wmX = parseFloat(xPct.toFixed(1));
+                    currentSettings.wmY = parseFloat(yPct.toFixed(1));
+                    currentSettings.wmW = parseFloat(wPct.toFixed(1));
+                    currentSettings.wmH = parseFloat(hPct.toFixed(1));
+                    // 同步输入框
+                    document.getElementById('wmX').value = String(currentSettings.wmX);
+                    document.getElementById('wmY').value = String(currentSettings.wmY);
+                    document.getElementById('wmW').value = String(currentSettings.wmW);
+                    document.getElementById('wmH').value = String(currentSettings.wmH);
+                    showToast(`已设置 ROI: x=${currentSettings.wmX}% y=${currentSettings.wmY}% w=${currentSettings.wmW}% h=${currentSettings.wmH}%`, 'success');
+                }
+                cleanup();
+            };
+            const onUp = (e) => {
+                if (!roiPicking || !roiStart) return cleanup();
+                const p = toLocal(e.clientX, e.clientY);
+                finish(p);
+            };
+            const onKey = (e) => { if (e.key === 'Escape') cleanup(); };
+            function cleanup(){
+                roiPicking = false;
+                roiStart = null;
+                if (roiOverlay) { roiOverlay.remove(); roiOverlay = null; }
+                window.removeEventListener('mousemove', onMove);
+                window.removeEventListener('mouseup', onUp);
+                window.removeEventListener('keydown', onKey);
+            }
+
+            roiOverlay.addEventListener('mousedown', onDown);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onUp);
+            window.addEventListener('keydown', onKey);
+            showToast('按下后拖拽框选左上角水印区域，Esc 取消', 'info');
+        }
+
+        // 初始化设置
+        function initializeSettings() {
+            const colorPicker = document.getElementById('colorPicker');
+            const toleranceSlider = document.getElementById('toleranceSlider');
+            const featherSlider = document.getElementById('featherSlider');
+            const wmEnabled = document.getElementById('wmEnabled');
+            const wmX = document.getElementById('wmX');
+            const wmY = document.getElementById('wmY');
+            const wmW = document.getElementById('wmW');
+            const wmH = document.getElementById('wmH');
+            const wmFeather = document.getElementById('wmFeather');
+            const wmFeatherValue = document.getElementById('wmFeatherValue');
+
+            colorPicker.addEventListener('change', function() {
+                currentSettings.color = this.value;
+                document.getElementById('colorValue').textContent = this.value;
+            });
+
+            toleranceSlider.addEventListener('input', function() {
+                currentSettings.tolerance = parseInt(this.value);
+                document.getElementById('toleranceValue').textContent = this.value;
+            });
+
+            featherSlider.addEventListener('input', function() {
+                currentSettings.feather = parseInt(this.value);
+                document.getElementById('featherValue').textContent = this.value;
+            });
+
+            // 去水印设置
+            wmEnabled.addEventListener('change', function() {
+                currentSettings.wmEnabled = !!this.checked;
+                document.getElementById('wmFields').style.opacity = this.checked ? '1' : '0.5';
+            });
+            const syncNum = (el, key) => el.addEventListener('input', function(){ currentSettings[key] = parseFloat(this.value || '0') || 0; });
+            syncNum(wmX, 'wmX');
+            syncNum(wmY, 'wmY');
+            syncNum(wmW, 'wmW');
+            syncNum(wmH, 'wmH');
+            wmFeather.addEventListener('input', function(){ currentSettings.wmFeather = parseFloat(this.value || '0') || 0; wmFeatherValue.textContent = String(currentSettings.wmFeather); });
+
+            // 初始化值展示
+            document.getElementById('colorValue').textContent = currentSettings.color;
+            document.getElementById('toleranceValue').textContent = String(currentSettings.tolerance);
+            document.getElementById('featherValue').textContent = String(currentSettings.feather);
+            wmFeatherValue.textContent = String(currentSettings.wmFeather);
+        }
+
+        // 拖拽处理
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = 'copy';
+            
+            const uploadArea = e.currentTarget;
+            uploadArea.classList.add('dragover');
+            console.log('Drag over upload area');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 只有当离开整个上传区域时才移除样式
+            const uploadArea = e.currentTarget;
+            const rect = uploadArea.getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                uploadArea.classList.remove('dragover');
+                console.log('Drag leave upload area');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Files dropped');
+            
+            const uploadArea = e.currentTarget;
+            uploadArea.classList.remove('dragover');
+            
+            const files = Array.from(e.dataTransfer.files);
+            console.log(`Dropped ${files.length} files:`, files.map(f => f.name));
+            
+            if (files.length > 0) {
+                processFileSelection(files);
+            } else {
+                showToast('没有检测到有效的文件', 'error');
+            }
+        }
+
+        // 文件选择处理
+        function handleFileSelect(e) {
+            console.log('File input changed');
+            const files = Array.from(e.target.files);
+            console.log(`Selected ${files.length} files:`, files.map(f => f.name));
+            
+            if (files.length > 0) {
+                processFileSelection(files);
+            } else {
+                console.log('No files selected');
+            }
+
+            // 关键修复：重置 input 的值，使得再次选择同一个文件也会触发 change 事件
+            try { e.target.value = ''; } catch (_) {}
+        }
+
+        // 处理文件选择
+        function processFileSelection(files) {
+            console.log('开始处理文件选择:', files.length, '个文件');
+            
+            if (!files || files.length === 0) {
+                showToast('没有选择任何文件', 'error');
+                return;
+            }
+            
+            const validFiles = [];
+            const errors = [];
+            
+            files.forEach(file => {
+                console.log(`检查文件: ${file.name} (${formatFileSize(file.size)}, ${file.type})`);
+                
+                if (!isValidVideoFile(file)) {
+                    const error = `${file.name}: 不支持的格式 (${file.type || '未知'})`;
+                    errors.push(error);
+                    console.warn(error);
+                    return;
+                }
+                
+                if (file.size > 100 * 1024 * 1024) {
+                    const error = `${file.name}: 文件过大 (${formatFileSize(file.size)})`;
+                    errors.push(error);
+                    console.warn(error);
+                    return;
+                }
+                
+                if (file.size < 1024) {
+                    const error = `${file.name}: 文件太小，可能已损坏`;
+                    errors.push(error);
+                    console.warn(error);
+                    return;
+                }
+                
+                // 检查是否已存在
+                const exists = selectedFiles.find(f => f.name === file.name && f.size === file.size);
+                if (!exists) {
+                    validFiles.push(file);
+                    console.log(`文件 ${file.name} 验证通过`);
+                } else {
+                    console.log(`文件 ${file.name} 已存在，跳过`);
+                }
+            });
+            
+            // 显示错误信息
+            if (errors.length > 0) {
+                errors.forEach(error => showToast(error, 'error'));
+            }
+            
+            if (validFiles.length === 0) {
+                if (errors.length === 0) {
+                    showToast('所有文件都已存在', 'info');
+                } else {
+                    showToast('没有找到有效的视频文件', 'error');
+                }
+                return;
+            }
+
+            selectedFiles = [...selectedFiles, ...validFiles];
+            console.log(`成功添加 ${validFiles.length} 个文件，当前总数: ${selectedFiles.length}`);
+            displayFileList();
+            showToast(`成功添加 ${validFiles.length} 个文件`, 'success');
+            // 新增文件时，允许新的自动下载触发
+            resetAutoDownloadLock();
+        }
+
+        // 验证视频文件
+        function isValidVideoFile(file) {
+            const validTypes = [
+                'video/mp4',
+                'video/quicktime',
+                'video/webm',
+                'video/x-msvideo', // .avi
+                'video/avi'
+            ];
+            
+            // 检查MIME类型
+            if (validTypes.includes(file.type)) {
+                return true;
+            }
+            
+            // 如果MIME类型为空或未知，检查文件扩展名
+            const fileName = file.name.toLowerCase();
+            const validExtensions = ['.mp4', '.mov', '.webm', '.avi'];
+            
+            return validExtensions.some(ext => fileName.endsWith(ext));
+        }
+
+        // 显示文件列表
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            const container = document.getElementById('filesContainer');
+
+            if (selectedFiles.length === 0) {
+                fileList.classList.add('hidden');
+                return;
+            }
+
+            fileList.classList.remove('hidden');
+            container.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const fileItem = createFileItem(file, index);
+                container.appendChild(fileItem);
+            });
+        }
+
+        // 创建文件项
+        function createFileItem(file, index) {
+            const item = document.createElement('div');
+            item.className = 'file-item';
+            item.id = `file-${index}`;
+
+            const processedFile = processedFiles.get(file.name);
+            const isProcessed = processedFile && processedFile.status === 'success';
+            const isProcessing = processedFile && processedFile.status === 'processing';
+
+            item.innerHTML = `
+                <div class="file-header">
+                    <div class="file-info">
+                        <h4>${file.name}</h4>
+                        <p>大小: ${formatFileSize(file.size)}</p>
+                        <p>类型: ${file.type}</p>
+                    </div>
+                    <div class="file-actions">
+                        ${isProcessed ? `
+                            <button class="btn btn-small" onclick="downloadFile(${index})">
+                                💾 下载
+                            </button>
+                            <button class="btn btn-small" onclick="downloadFileToFolder(${index})" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); font-size: 0.8rem;">
+                                📁 下载到video/
+                            </button>
+                            <button class="btn btn-small" onclick="previewFile(${index})">
+                                👀 预览
+                            </button>
+                        ` : `
+                            <button class="btn btn-small" onclick="convertSingleFile(${index})">
+                                🔄 转换
+                            </button>
+                        `}
+                        <button class="btn btn-small danger" onclick="removeFile(${index})">
+                            ❌ 移除
+                        </button>
+                    </div>
+                </div>
+                <div class="status ${processedFile ? processedFile.status : 'pending'}" id="status-${index}">
+                    ${getStatusText(processedFile ? processedFile.status : 'pending')}
+                </div>
+                <div class="progress-container ${isProcessing ? '' : 'hidden'}" id="progress-${index}">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-text">
+                        <div class="progress-percentage">0%</div>
+                        <div class="progress-stage"></div>
+                        <div class="progress-details"></div>
+                    </div>
+                </div>
+                ${isProcessed ? `
+                    <div class="preview-container">
+                        <video class="preview-video" controls muted>
+                            <source src="${processedFile.url}" type="video/webm">
+                        </video>
+                    </div>
+                ` : ''}
+            `;
+
+            return item;
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '⏳ 待处理',
+                'processing': '⚙️ 处理中...',
+                'success': '✅ 处理完成',
+                'error': '❌ 处理失败'
+            };
+            return statusMap[status] || '❓ 未知状态';
+        }
+
+        // 格式化文件大小
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 切换设置面板
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            const btn = document.getElementById('settingsBtn');
+            
+            if (panel.classList.contains('show')) {
+                panel.classList.remove('show');
+                btn.textContent = '⚙️ 高级设置';
+            } else {
+                panel.classList.add('show');
+                btn.textContent = '⚙️ 隐藏设置';
+            }
+        }
+
+        // 转换单个文件
+        async function convertSingleFile(index) {
+            const file = selectedFiles[index];
+            if (!file) return;
+
+            // 立即显示进度条和初始状态
+            showProgress(index);
+            updateFileStatus(index, 'processing', '正在分析视频...');
+            updateProgress(index, 0, '正在分析视频...', '准备开始处理视频文件');
+
+            // 记录处理中的状态，防止列表重绘回退为 pending
+            processedFiles.set(file.name, { status: 'processing', progress: 0 });
+
+            try {
+                // 优先尝试 wasm/ffmpeg 管线
+                await ensureFfmpegWorker();
+                let result;
+                if (ffmpegWorker && ffmpegReady) {
+                    updateProgress(index, 10, '准备使用 FFmpeg.wasm', '加载解码/编码引擎');
+                    currentPipeline = 'wasm';
+                    result = await processVideoFileWithFFmpeg(file, (progress, stage, details) => {
+                        updateProgress(index, progress, stage, details);
+                    });
+                } else {
+                    currentPipeline = 'canvas';
+                    // 回退到原画布+MediaRecorder 管线
+                    result = await processVideoFile(file, (progress, stage, details) => {
+                        updateProgress(index, progress, stage, details);
+                    });
+                }
+
+                processedFiles.set(file.name, {
+                    status: 'success',
+                    url: result.url,
+                    blob: result.blob,
+                    duration: result.duration,
+                    frames: result.frames
+                });
+
+                updateFileStatus(index, 'success', '处理完成');
+                hideProgress(index);
+                addPreview(index, result.url);
+                showToast(`${file.name} 处理完成 (${result.frames} 帧, ${result.duration.toFixed(1)}s)`, 'success');
+                // 刷新按钮为 单个下载/预览/移除
+                refreshFileActions(index);
+                // 每个文件成功后：若已设置输出目录则立刻保存该文件
+                try {
+                    if (immediatePerFileSave) {
+                        if (!outputDirHandle) {
+                            showToast('请先点击“设置输出目录(video)”', 'warning');
+                        } else {
+                            await saveProcessedFileDirect(result.blob);
+                        }
+                    } else {
+                        autoConvertIfNeeded();
+                    }
+                } catch (e) {
+                    console.warn('单文件自动保存失败，将在批量阶段处理:', e);
+                }
+
+            } catch (error) {
+                console.error('处理失败:', error);
+                const errorMessage = error.message || '未知错误';
+                processedFiles.set(file.name, { 
+                    status: 'error', 
+                    error: errorMessage,
+                    fullError: error
+                });
+                updateFileStatus(index, 'error', '处理失败');
+                hideProgress(index);
+                currentPipeline = 'auto';
+                
+                // 显示详细错误信息
+                addErrorDetails(index, errorMessage);
+                showToast(`${file.name} 处理失败: ${errorMessage}`, 'error');
+            }
+        }
+
+        // 转换所有文件
+        async function convertAllFiles() {
+            if (selectedFiles.length === 0) {
+                showToast('请先选择要转换的视频文件', 'warning');
+                return;
+            }
+
+            const convertBtn = document.getElementById('convertAllBtn');
+            convertBtn.disabled = true;
+            convertBtn.textContent = '🔄 转换中...';
+
+            try {
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const processedFile = processedFiles.get(selectedFiles[i].name);
+                    if (!processedFile || processedFile.status !== 'success') {
+                        await convertSingleFile(i);
+                        // 添加延迟避免浏览器卡顿
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                }
+                showToast('所有文件处理完成', 'success');
+            } catch (error) {
+                showToast('批量转换出现错误', 'error');
+            } finally {
+                convertBtn.disabled = false;
+                convertBtn.textContent = '🚀 开始转换';
+            }
+        }
+
+        // 处理视频文件的核心函数
+        async function processVideoFile(file, progressCallback) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                // 设置视频属性
+                video.crossOrigin = 'anonymous';
+                video.muted = true;
+
+                // 阶段1: 加载视频文件
+                progressCallback(1, '加载视频文件', '解析视频元数据...');
+
+                video.onloadedmetadata = function() {
+                    console.log(`视频信息: ${video.videoWidth}x${video.videoHeight}, 时长: ${video.duration}s`);
+                    
+                    // 阶段2: 验证视频
+                    progressCallback(5, '验证视频', '检查视频格式和参数...');
+                    
+                    // 检查视频尺寸是否有效
+                    if (!video.videoWidth || !video.videoHeight || video.videoWidth === 0 || video.videoHeight === 0) {
+                        reject(new Error(`视频尺寸无效: ${video.videoWidth}x${video.videoHeight}。请确保视频文件完整且格式正确。`));
+                        return;
+                    }
+                    
+                    if (!video.duration || video.duration === 0 || isNaN(video.duration)) {
+                        reject(new Error(`视频时长无效: ${video.duration}。请确保视频文件完整。`));
+                        return;
+                    }
+                    
+                    // 阶段3: 配置画布
+                    progressCallback(10, '配置画布', '计算最佳处理尺寸...');
+                    
+                    // 设置合适的画布尺寸
+                    const maxSize = 720; // 限制最大尺寸以提高性能
+                    let width = video.videoWidth;
+                    let height = video.videoHeight;
+                    
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height = (height * maxSize) / width;
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width = (width * maxSize) / height;
+                            height = maxSize;
+                        }
+                    }
+                    
+                    // 确保尺寸至少为1且为整数
+                    canvas.width = Math.max(1, Math.floor(width));
+                    canvas.height = Math.max(1, Math.floor(height));
+                    
+                    console.log(`画布尺寸设置为: ${canvas.width}x${canvas.height}`);
+                    
+                    // 阶段4: 准备处理
+                    progressCallback(15, '准备处理', '初始化视频处理引擎...');
+                    
+                    // 等待视频完全准备好
+                    if (video.readyState >= 2) {
+                        processFrames();
+                    } else {
+                        video.oncanplay = processFrames;
+                    }
+                };
+
+                video.onerror = function(e) {
+                    console.error('视频加载错误:', e);
+                    reject(new Error('视频文件加载失败，请检查文件格式'));
+                };
+
+                let isProcessing = false;
+                const frames = [];
+                const targetFPS = 15; // 目标帧率
+                const frameInterval = 1000 / targetFPS; // 帧间隔(ms)
+                let processingStartTime = performance.now();
+
+                function processFrames() {
+                    if (isProcessing) return;
+                    isProcessing = true;
+
+                    let currentFrame = 0;
+                    const totalFrames = Math.floor(video.duration * targetFPS);
+                    processingStartTime = performance.now(); // 重置开始时间
+                    
+                    console.log(`开始处理 ${totalFrames} 帧`);
+                    
+                    // 阶段5: 开始帧处理
+                    progressCallback(20, '处理视频帧', `准备处理 ${totalFrames} 帧...`);
+
+                    async function processNextFrame() {
+                        if (currentFrame >= totalFrames) {
+                            console.log(`处理完成，共 ${frames.length} 帧`);
+                            // 阶段6: 生成输出
+                            progressCallback(90, '生成视频', '正在编码输出视频...');
+                            generateOutput();
+                            return;
+                        }
+
+                        // 如果在后台，则等待切回前台再继续，避免 seek/绘制/编码失败
+                        if (pageHidden) {
+                            progressCallback(20 + (currentFrame / totalFrames) * 65, '后台暂停', '切回前台后继续处理');
+                            try { await waitForVisible(); } catch (_) {}
+                        }
+
+                        const targetTime = currentFrame / targetFPS;
+
+                        // onseeked 可靠性增强：超时回退重试
+                        let seeked = false;
+                        const onSeekedOnce = function(){ seeked = true; video.onseeked = handleSeeked; };
+                        const handleSeeked = video.onseeked; // existing handler set below
+                        video.addEventListener('seeked', onSeekedOnce, { once: true });
+                        video.currentTime = targetTime;
+                        setTimeout(() => {
+                            if (!seeked) {
+                                console.warn('seek超时，重试设置currentTime');
+                                video.currentTime = Math.min(targetTime + (1/targetFPS), video.duration);
+                            }
+                        }, pageHidden ? 400 : 200);
+                        
+                        // 注意：实际的进度更新现在移到了 video.onseeked 事件中
+                    }
+
+                    video.onseeked = async function() {
+                        try {
+                            // 检查视频是否准备好
+                            if (video.readyState < 2) {
+                                console.log('视频未准备好，跳过当前帧');
+                                currentFrame++;
+                                setTimeout(processNextFrame, 10);
+                                return;
+                            }
+                            
+                            // 在处理帧之前先更新进度
+                            const frameProgress = (currentFrame / totalFrames);
+                            const progress = 20 + (frameProgress * 65);
+                            
+                            // 计算时间信息
+                            const elapsed = performance.now() - processingStartTime;
+                            const estimatedTotal = totalFrames > 0 ? (elapsed / (currentFrame + 1)) * totalFrames : 0;
+                            const remaining = Math.max(0, estimatedTotal - elapsed);
+                            
+                            const stage = '处理视频帧';
+                            const details = `${currentFrame + 1}/${totalFrames} (${(frameProgress * 100).toFixed(1)}%) - 预计剩余 ${Math.round(remaining / 1000)}s`;
+                            
+                            // 立即更新进度显示
+                            progressCallback(progress, stage, details);
+                            
+                            // 检查画布尺寸
+                            if (canvas.width === 0 || canvas.height === 0) {
+                                throw new Error(`画布尺寸无效: ${canvas.width}x${canvas.height}`);
+                            }
+                            
+                            // 清空画布
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            
+                            // 绘制当前帧
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            
+                            // 获取图像数据并检查有效性
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            
+                            if (!imageData || imageData.width === 0 || imageData.height === 0) {
+                                throw new Error(`图像数据无效: ${imageData ? imageData.width + 'x' + imageData.height : 'null'}`);
+                            }
+                            
+                            // 处理背景（Worker 优先）
+                            let processedData;
+                            try {
+                                processedData = await processFrameInWorker(imageData);
+                            } catch (workerErr) {
+                                console.warn('Worker处理失败，回退主线程算法:', workerErr && workerErr.message ? workerErr.message : workerErr);
+                                processedData = removeBackground(imageData);
+                            }
+                            ctx.putImageData(processedData, 0, 0);
+
+                            // 去水印：在左上角 ROI 叠加透明遮罩（destination-out），支持羽化
+                            if (currentSettings.wmEnabled) {
+                                try {
+                                    const fw = canvas.width;
+                                    const fh = canvas.height;
+                                    const rx = Math.max(0, Math.min(100, currentSettings.wmX || 0)) / 100 * fw;
+                                    const ry = Math.max(0, Math.min(100, currentSettings.wmY || 0)) / 100 * fh;
+                                    const rw = Math.max(1, Math.min(fw, (currentSettings.wmW || 0) / 100 * fw));
+                                    const rh = Math.max(1, Math.min(fh, (currentSettings.wmH || 0) / 100 * fh));
+                                    const featherPx = Math.max(0, Number(currentSettings.wmFeather || 0));
+
+                                    ctx.save();
+                                    ctx.globalCompositeOperation = 'destination-out';
+                                    if (featherPx > 0) {
+                                        // 绘制带羽化的矩形：先绘制不透明，再应用模糊实现柔边
+                                        // 使用离屏画布提升性能并避免影响主画布状态
+                                        const off = document.createElement('canvas');
+                                        off.width = fw; off.height = fh;
+                                        const octx = off.getContext('2d');
+                                        octx.fillStyle = '#000';
+                                        // 扩大填充以覆盖羽化半径
+                                        octx.fillRect(rx, ry, rw, rh);
+                                        // 将离屏模糊后叠加
+                                        ctx.filter = `blur(${featherPx}px)`;
+                                        ctx.drawImage(off, 0, 0);
+                                        ctx.filter = 'none';
+                                    } else {
+                                        ctx.fillStyle = '#000';
+                                        ctx.fillRect(rx, ry, rw, rh);
+                                    }
+                                    ctx.restore();
+                                } catch (e) {
+                                    console.warn('去水印遮罩失败:', e);
+                                }
+                            }
+                            
+                            // 保存帧
+                            const frameData = canvas.toDataURL('image/webp', 0.8);
+                            if (frameData && frameData.length > 100) { // 确保帧数据有效
+                                frames.push(frameData);
+                            }
+                            
+                            console.log(`处理帧 ${currentFrame + 1}/${Math.floor(video.duration * targetFPS)} (时间: ${(currentFrame / targetFPS).toFixed(2)}s)`);
+                            
+                            currentFrame++;
+                            
+                            // 处理下一帧：可见性感知，后台直接等待前台，无需轮询
+                            if (pageHidden) {
+                                try { await waitForVisible(); } catch (_) {}
+                                setTimeout(processNextFrame, 20);
+                            } else {
+                                setTimeout(processNextFrame, 40);
+                            }
+                            
+                        } catch (error) {
+                            console.error('帧处理错误:', error);
+                            // 尝试继续处理下一帧，但如果错误太多则停止
+                            currentFrame++;
+                            if (currentFrame - frames.length > 10) {
+                                reject(new Error(`帧处理失败过多: ${error.message}`));
+                                return;
+                            }
+                            if (pageHidden) {
+                                try { await waitForVisible(); } catch (_) {}
+                                setTimeout(processNextFrame, 40);
+                            } else {
+                                setTimeout(processNextFrame, 60);
+                            }
+                        }
+                    };
+
+                    // 开始处理第一帧
+                    processNextFrame();
+                }
+
+                function removeBackground(imageData) {
+                    const data = imageData.data;
+                    const targetColor = hexToRgb(currentSettings.color);
+                    const tolerance = currentSettings.tolerance / 100 * 255;
+                    const feather = currentSettings.feather;
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+
+                        // 计算颜色差异
+                        const diff = Math.sqrt(
+                            Math.pow(r - targetColor.r, 2) +
+                            Math.pow(g - targetColor.g, 2) +
+                            Math.pow(b - targetColor.b, 2)
+                        );
+
+                        // 如果颜色接近目标颜色，设置为透明
+                        if (diff <= tolerance) {
+                            let alpha = 0;
+                            if (feather > 0) {
+                                // 边缘羽化
+                                const featherRange = feather * 10;
+                                if (diff > tolerance - featherRange) {
+                                    alpha = (diff - (tolerance - featherRange)) / featherRange;
+                                }
+                            }
+                            data[i + 3] = Math.floor(alpha * 255);
+                        }
+                    }
+
+                    return imageData;
+                }
+
+                async function generateOutput() {
+                    try {
+                        progressCallback(90, '生成视频', '准备编码视频数据...');
+                        console.log('开始生成视频...');
+                        
+                        if (frames.length === 0) {
+                            throw new Error('没有处理到有效帧');
+                        }
+
+                        progressCallback(95, '生成视频', '正在编码WebM格式...');
+                        
+                        // 使用改进的视频生成方法
+                        const webmBlob = await createWebMFromFrames(frames, video.duration, targetFPS);
+                        const url = URL.createObjectURL(webmBlob);
+                        
+                        progressCallback(99, '完成处理', '生成下载链接...');
+                        console.log('视频生成完成');
+                        
+                        // 最终完成
+                        progressCallback(100, '处理完成', `成功生成 ${frames.length} 帧透明视频`);
+                        
+                        resolve({
+                            blob: webmBlob,
+                            url: url,
+                            duration: video.duration,
+                            frames: frames.length
+                        });
+                    } catch (error) {
+                        console.error('视频生成失败:', error);
+                        reject(error);
+                    }
+                }
+
+                // 加载视频文件
+                video.src = URL.createObjectURL(file);
+                video.load();
+            });
+        }
+
+        // 使用 FFmpeg.wasm 处理（页面隐藏也能持续）
+        async function processVideoFileWithFFmpeg(file, progressCallback) {
+            progressCallback(12, '加载文件', '读取视频数据到内存');
+            const arrayBuffer = await file.arrayBuffer();
+            const fileName = file.name || 'input.mp4';
+            progressCallback(18, '启动引擎', '准备执行抠像与编码');
+
+            const worker = await ensureFfmpegWorker();
+            if (!worker || !ffmpegReady) {
+                throw new Error('FFmpeg 引擎初始化失败');
+            }
+
+            const startTs = performance.now();
+            const p = new Promise((resolve, reject) => {
+                const onMsg = (ev) => {
+                    const d = ev.data || {};
+                    if (d.type === 'convert:ok') {
+                        worker.removeEventListener('message', onMsg);
+                        const blob = new Blob([d.payload.buffer], { type: 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const elapsed = performance.now() - startTs;
+                        progressCallback(100, '处理完成', `耗时 ${(elapsed/1000).toFixed(1)}s`);
+                        resolve({ blob, url, duration: 0, frames: 0 });
+                    } else if (d.type === 'error') {
+                        worker.removeEventListener('message', onMsg);
+                        reject(new Error(d.payload && d.payload.message ? d.payload.message : 'FFmpeg 处理失败'));
+                    }
+                };
+                worker.addEventListener('message', onMsg);
+            });
+
+            // 发送任务
+            worker.postMessage({ type: 'convert', payload: { fileBuffer: arrayBuffer, fileName, settings: currentSettings } }, [arrayBuffer]);
+
+            // 简单的进度轮询（ffmpeg.min.js 的 log=false 默认不推送进度；可后续用 ffmpeg.setLogger 获取）
+            let fake = 20;
+            const tick = () => {
+                if (fake < 95) {
+                    fake += Math.random() * 3;
+                    progressCallback(Math.min(95, fake), 'FFmpeg处理中', '请保持浏览器运行');
+                    setTimeout(tick, 600);
+                }
+            };
+            setTimeout(tick, 600);
+
+            return p;
+        }
+
+        // 从帧创建WebM（改进版本）
+        async function createWebMFromFrames(frames, duration, fps = 15) {
+            console.log(`生成视频: ${frames.length} 帧, ${duration}s, ${fps}FPS`);
+            
+            if (frames.length === 0) {
+                throw new Error('没有帧数据');
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 设置画布大小
+            const firstImg = new Image();
+            await new Promise((resolve, reject) => {
+                firstImg.onload = resolve;
+                firstImg.onerror = reject;
+                firstImg.src = frames[0];
+            });
+            
+            canvas.width = firstImg.width;
+            canvas.height = firstImg.height;
+            
+            console.log(`画布尺寸: ${canvas.width}x${canvas.height}`);
+
+            // 检测浏览器支持的编码格式
+            let mimeType = 'video/webm;codecs=vp8';
+            if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+                mimeType = 'video/webm;codecs=vp9';
+            } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+                mimeType = 'video/webm;codecs=vp8';
+            } else if (MediaRecorder.isTypeSupported('video/webm')) {
+                mimeType = 'video/webm';
+            } else {
+                throw new Error('浏览器不支持WebM格式录制');
+            }
+            
+            console.log('使用编码格式:', mimeType);
+
+            // 创建视频流
+            const stream = canvas.captureStream(fps);
+            const recorder = new MediaRecorder(stream, {
+                mimeType: mimeType,
+                videoBitsPerSecond: 2000000 // 2Mbps
+            });
+
+            const chunks = [];
+            let isRecording = false;
+
+            recorder.ondataavailable = function(e) {
+                if (e.data && e.data.size > 0) {
+                    chunks.push(e.data);
+                    console.log('录制数据块:', e.data.size, 'bytes');
+                }
+            };
+
+            return new Promise((resolve, reject) => {
+                let stoppedByLogic = false;
+
+                recorder.onstop = function() {
+                    console.log('录制完成，数据块数量:', chunks.length);
+                    
+                    if (chunks.length === 0) {
+                        reject(new Error('没有录制到数据'));
+                        return;
+                    }
+                    
+                    const blob = new Blob(chunks, { type: 'video/webm' });
+                    console.log('生成视频大小:', blob.size, 'bytes');
+                    
+                    if (blob.size === 0) {
+                        reject(new Error('生成的视频文件为空'));
+                        return;
+                    }
+                    
+                    resolve(blob);
+                };
+
+                recorder.onerror = function(e) {
+                    console.error('录制错误:', e);
+                    reject(new Error('视频录制失败: ' + (e.error || e.message || '未知错误')));
+                };
+
+                // 开始录制
+                try {
+                    recorder.start(100); // 每100ms收集一次数据
+                    isRecording = true;
+                    console.log('开始录制...');
+                } catch (error) {
+                    clearTimeout(timeout);
+                    reject(new Error('无法开始录制: ' + error.message));
+                    return;
+                }
+
+                // 播放帧序列
+                let frameIndex = 0;
+                const frameDuration = 1000 / fps; // 每帧持续时间(ms)
+                
+                async function playNextFrame() {
+                    if (frameIndex >= frames.length) {
+                        console.log('帧播放完成，停止录制...');
+                        setTimeout(() => {
+                            if (isRecording) {
+                                recorder.stop();
+                                isRecording = false;
+                            }
+                        }, 500); // 等待最后一帧
+                        return;
+                    }
+
+                    // 如果窗口在后台，则暂停推进直到回到前台，避免 MediaRecorder/绘制停摆
+                    if (pageHidden) {
+                        try { await waitForVisible(); } catch (_) {}
+                    }
+
+                    const img = new Image();
+                    img.onload = function() {
+                        try {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                            
+                            frameIndex++;
+                            if (pageHidden) {
+                                // 后台不推进，等待前台
+                                (async function(){ try { await waitForVisible(); } catch (_) {} setTimeout(playNextFrame, frameDuration); })();
+                            } else {
+                                setTimeout(playNextFrame, frameDuration);
+                            }
+                        } catch (error) {
+                            console.error('绘制帧错误:', error);
+                            frameIndex++;
+                            if (pageHidden) {
+                                (async function(){ try { await waitForVisible(); } catch (_) {} setTimeout(playNextFrame, frameDuration); })();
+                            } else {
+                                setTimeout(playNextFrame, frameDuration);
+                            }
+                        }
+                    };
+                    
+                    img.onerror = function() {
+                        console.error('加载帧失败:', frameIndex);
+                        frameIndex++;
+                        if (pageHidden) {
+                            (async function(){ try { await waitForVisible(); } catch (_) {} setTimeout(playNextFrame, frameDuration); })();
+                        } else {
+                            setTimeout(playNextFrame, frameDuration);
+                        }
+                    };
+                    
+                    img.src = frames[frameIndex];
+                }
+
+                // 开始播放帧
+                setTimeout(playNextFrame, 100);
+            });
+        }
+
+        // 颜色转换工具
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16)
+            } : { r: 0, g: 0, b: 0 };
+        }
+
+        // UI 更新函数
+        function updateFileStatus(index, status, details) {
+            const statusEl = document.getElementById(`status-${index}`);
+            if (statusEl) {
+                statusEl.className = `status ${status}`;
+                const statusText = getStatusText(status);
+                statusEl.textContent = details ? `${statusText} - ${details}` : statusText;
+            }
+            // 不再强制重绘整个文件列表，避免状态回退/闪烁
+        }
+
+        function showProgress(index) {
+            const progressEl = document.getElementById(`progress-${index}`);
+            if (progressEl) {
+                progressEl.classList.remove('hidden');
+            }
+        }
+
+        function updateProgress(index, progress, stage, details) {
+            const progressEl = document.getElementById(`progress-${index}`);
+            if (progressEl) {
+                const fill = progressEl.querySelector('.progress-fill');
+                const percentageEl = progressEl.querySelector('.progress-percentage');
+                const stageEl = progressEl.querySelector('.progress-stage');
+                const detailsEl = progressEl.querySelector('.progress-details');
+                
+                // 更新进度条
+                if (fill) fill.style.width = `${progress}%`;
+                
+                // 更新百分比
+                if (percentageEl) percentageEl.textContent = `${Math.round(progress)}%`;
+                
+                // 更新阶段信息
+                if (stageEl) stageEl.textContent = stage || '';
+                
+                // 更新详细信息
+                if (detailsEl) detailsEl.textContent = details || '';
+                
+                // 强制重绘确保更新显示
+                progressEl.offsetHeight;
+            }
+            
+            // 同时更新状态栏
+            if (stage) {
+                updateFileStatus(index, 'processing', stage);
+            }
+            
+            // 输出调试信息
+            console.log(`Progress updated: ${Math.round(progress)}% - ${stage} - ${details}`);
+
+            // 同步内存状态，防止重绘回退
+            const file = selectedFiles[index];
+            if (file) {
+                const prev = processedFiles.get(file.name) || {};
+                processedFiles.set(file.name, { ...prev, status: 'processing', progress: Math.round(progress) });
+            }
+        }
+
+        function hideProgress(index) {
+            const progressEl = document.getElementById(`progress-${index}`);
+            if (progressEl) {
+                progressEl.classList.add('hidden');
+            }
+        }
+
+        function addPreview(index, url) {
+            const fileItem = document.getElementById(`file-${index}`);
+            if (fileItem && !fileItem.querySelector('.preview-container')) {
+                const previewHtml = `
+                    <div class="preview-container">
+                        <video class="preview-video" controls muted>
+                            <source src="${url}" type="video/webm">
+                        </video>
+                    </div>
+                `;
+                fileItem.insertAdjacentHTML('beforeend', previewHtml);
+            }
+        }
+
+        // 刷新文件动作按钮（用于在处理成功后显示单个下载）
+        function refreshFileActions(index) {
+            const file = selectedFiles[index];
+            const fileItem = document.getElementById(`file-${index}`);
+            const actions = fileItem ? fileItem.querySelector('.file-actions') : null;
+            if (!file || !actions) return;
+            const pf = processedFiles.get(file.name);
+            if (pf && pf.status === 'success') {
+                actions.innerHTML = `
+                    <button class="btn btn-small" onclick="downloadFile(${index})">💾 下载</button>
+                    <button class="btn btn-small" onclick="downloadFileToFolder(${index})" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); font-size: 0.8rem;">📁 下载到video/</button>
+                    <button class="btn btn-small" onclick="previewFile(${index})">👀 预览</button>
+                    <button class="btn btn-small danger" onclick="removeFile(${index})">❌ 移除</button>
+                `;
+            } else if (pf && pf.status === 'processing') {
+                actions.innerHTML = `
+                    <button class="btn btn-small" disabled>🔄 转换中...</button>
+                    <button class="btn btn-small danger" onclick="removeFile(${index})">❌ 移除</button>
+                `;
+            } else {
+                actions.innerHTML = `
+                    <button class="btn btn-small" onclick="convertSingleFile(${index})">🔄 转换</button>
+                    <button class="btn btn-small danger" onclick="removeFile(${index})">❌ 移除</button>
+                `;
+            }
+        }
+
+        function addErrorDetails(index, errorMessage) {
+            const fileItem = document.getElementById(`file-${index}`);
+            if (fileItem && !fileItem.querySelector('.error-details')) {
+                const errorHtml = `
+                    <div class="error-details" style="
+                        margin-top: 12px;
+                        padding: 12px;
+                        background: #fff5f5;
+                        border: 1px solid #fed7d7;
+                        border-radius: 6px;
+                        font-size: 0.9rem;
+                        color: #c53030;
+                    ">
+                        <div style="font-weight: 600; margin-bottom: 8px;">❌ 错误详情:</div>
+                        <div>${errorMessage}</div>
+                        <div style="margin-top: 8px;">
+                            <button class="btn btn-small" onclick="diagnoseError(${index})" style="background: #e53e3e;">
+                                🔍 诊断问题
+                            </button>
+                            <button class="btn btn-small" onclick="retryProcessing(${index})" style="background: #3182ce;">
+                                🔄 重试
+                            </button>
+                        </div>
+                    </div>
+                `;
+                fileItem.insertAdjacentHTML('beforeend', errorHtml);
+            }
+        }
+
+        // 全局变量：用于跟踪下载序号
+        let downloadCounter = 1;
+        const MAX_DOWNLOAD_NUMBER = 200;
+
+        // 目录句柄：用户选择的输出目录（需支持 File System Access API）
+        let outputDirHandle = null;
+
+        // 确保已选择输出目录（首次调用会请求权限）
+        async function ensureOutputDirectory(userInitiated = false) {
+            if (outputDirHandle) return outputDirHandle;
+            if (!window.showDirectoryPicker) {
+                showToast('浏览器不支持选择文件夹，将使用普通下载方式', 'warning');
+                return null;
+            }
+            if (!userInitiated) {
+                // 非用户手势触发，不弹系统选择器，避免降级为默认下载
+                showToast('请先点击“设置输出目录(video)”按钮', 'warning');
+                highlightPickOutputButton();
+                return null;
+            }
+            try {
+                const handle = await window.showDirectoryPicker({ id: 'alphavid-output', mode: 'readwrite' });
+                const ok = await verifyOutputPermission(handle);
+                if (!ok) {
+                    showToast('未授予写入权限，无法保存到目录', 'error');
+                    return null;
+                }
+                outputDirHandle = handle;
+                showToast('已选择输出文件夹', 'success');
+                updatePickOutputButton(true);
+                return handle;
+            } catch (e) {
+                console.warn('选择输出文件夹被取消或失败:', e);
+                showToast('未选择输出文件夹', 'warning');
+                return null;
+            }
+        }
+
+        async function verifyOutputPermission(handle) {
+            try {
+                const q = await handle.queryPermission({ mode: 'readwrite' });
+                if (q === 'granted') return true;
+                const r = await handle.requestPermission({ mode: 'readwrite' });
+                return r === 'granted';
+            } catch (_) { return false; }
+        }
+
+        function updatePickOutputButton(set) {
+            const btn = document.getElementById('pickOutputBtn');
+            if (!btn) return;
+            if (set) {
+                btn.textContent = '📁 已设置输出目录';
+            } else {
+                btn.textContent = '📁 设置输出目录(video)';
+            }
+        }
+
+        function highlightPickOutputButton() {
+            const btn = document.getElementById('pickOutputBtn');
+            if (!btn) return;
+            btn.style.boxShadow = '0 0 0 4px rgba(255,127,80,0.35)';
+            setTimeout(() => { btn.style.boxShadow = ''; }, 1200);
+        }
+
+        // 将Blob写入指定目录
+        async function saveBlobToDirectory(dirHandle, fileName, blob) {
+            try {
+                const fileHandle = await dirHandle.getFileHandle(fileName, { create: true });
+                const writable = await fileHandle.createWritable();
+                await writable.write(blob);
+                await writable.close();
+                return true;
+            } catch (e) {
+                console.error('写入文件失败:', e);
+                return false;
+            }
+        }
+
+        // 扫描目录获取已存在的最大数字索引（形如 1.webm, 2.webm ...）
+        async function getMaxExistingIndex(dirHandle) {
+            let maxNum = 0;
+            try {
+                for await (const [name, handle] of dirHandle.entries()) {
+                    if (handle.kind === 'file') {
+                        const match = /^([0-9]{1,4})\.webm$/i.exec(name);
+                        if (match) {
+                            const num = parseInt(match[1], 10);
+                            if (!Number.isNaN(num)) {
+                                if (num > maxNum) maxNum = num;
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('读取目录内容失败:', e);
+            }
+            return maxNum;
+        }
+
+        // 获取目录中下一个可用的数字文件名（返回例如 "4.webm"），超出上限则返回null
+        async function getNextAvailableName(dirHandle) {
+            const maxNum = await getMaxExistingIndex(dirHandle);
+            let next = Math.max(maxNum + 1, downloadCounter);
+            if (next > MAX_DOWNLOAD_NUMBER) return null;
+            // 提前推进计数器，确保连续
+            downloadCounter = next + 1;
+            return `${next}.webm`;
+        }
+
+        // 保存一个处理完成的 Blob 到输出目录（立即保存）
+        async function saveProcessedFileDirect(blob) {
+            const dir = await ensureOutputDirectory(false);
+            if (!dir) {
+                showToast('未设置输出目录，无法保存', 'warning');
+                return false;
+            }
+            const candidate = await getNextAvailableName(dir);
+            if (!candidate) {
+                showToast(`超过最大数量限制(${MAX_DOWNLOAD_NUMBER})，请更换目录或重置序号`, 'warning');
+                return false;
+            }
+            const ok = await saveBlobToDirectory(dir, candidate, blob);
+            if (ok) {
+                showToast(`已保存: ${candidate}`, 'success');
+            }
+            return ok;
+        }
+
+        // 重置下载计数器
+        function resetDownloadCounter() {
+            downloadCounter = 1;
+        }
+
+        // 获取下一个可用的下载序号
+        function getNextDownloadNumber() {
+            if (downloadCounter > MAX_DOWNLOAD_NUMBER) {
+                downloadCounter = 1; // 重新开始
+            }
+            return downloadCounter++;
+        }
+
+        // 下载单个文件到指定文件夹
+        async function downloadFileToFolder(index) {
+            const file = selectedFiles[index];
+            if (!file) return;
+
+            const processedFile = processedFiles.get(file.name);
+            if (!processedFile || processedFile.status !== 'success') {
+                showToast('文件尚未处理完成', 'warning');
+                return;
+            }
+
+            try {
+                // 优先尝试写入到用户选择的目录
+                const dir = await ensureOutputDirectory(false);
+                if (dir) {
+                    // 读取目录中现有最大编号，并从其后开始命名
+                    const candidate = await getNextAvailableName(dir);
+                    if (!candidate) {
+                        showToast(`超过最大数量限制(${MAX_DOWNLOAD_NUMBER})，请更换目录或重置序号`, 'warning');
+                        return;
+                    }
+                    const ok = await saveBlobToDirectory(dir, candidate, processedFile.blob);
+                    if (ok) {
+                        showToast(`已保存: ${candidate}`, 'success');
+                        return;
+                    } else {
+                        showToast('目录写入失败，改用普通下载方式', 'warning');
+                    }
+                }
+
+                // 回退：使用浏览器下载（无法强制指定文件夹）
+                const number = getNextDownloadNumber();
+                const fallbackName = `${number}.webm`;
+                const a = document.createElement('a');
+                a.href = processedFile.url;
+                a.download = fallbackName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast(`开始下载: ${fallbackName}`, 'success');
+            } catch (error) {
+                console.error('下载失败:', error);
+                showToast('下载失败，请重试', 'error');
+            }
+        }
+
+        // 批量下载所有文件到指定文件夹
+        async function downloadAllToFolder() {
+            const successFiles = Array.from(processedFiles.entries())
+                .filter(([name, file]) => file.status === 'success');
+
+            if (successFiles.length === 0) {
+                showToast('没有可下载的文件', 'warning');
+                return;
+            }
+
+            if (successFiles.length > MAX_DOWNLOAD_NUMBER) {
+                showToast(`文件数量超过限制 (${MAX_DOWNLOAD_NUMBER})，请分批下载`, 'warning');
+                return;
+            }
+
+            // 重置计数器确保从1开始
+            resetDownloadCounter();
+
+            try {
+                const dir = await ensureOutputDirectory(false);
+
+                if (dir) {
+                    // 从目录中最大编号的下一个开始批量命名
+                    const startName = await getNextAvailableName(dir);
+                    if (!startName) {
+                        showToast(`超过最大数量限制(${MAX_DOWNLOAD_NUMBER})，请更换目录或重置序号`, 'warning');
+                        return;
+                    }
+                    // 已在 getNextAvailableName 中推进了 downloadCounter
+                    // 逐个写入到目录
+                    for (let i = 0; i < successFiles.length; i++) {
+                        const [, fileObj] = successFiles[i];
+                        const nextName = await getNextAvailableName(dir);
+                        if (!nextName) {
+                            showToast(`可用命名已到达上限，已保存前 ${i} 个`, 'warning');
+                            return;
+                        }
+                        const ok = await saveBlobToDirectory(dir, nextName, fileObj.blob);
+                        console.log(`保存 ${i + 1}/${successFiles.length}: ${nextName} -> ${ok ? 'OK' : 'FAIL'}`);
+                        await new Promise(r => setTimeout(r, 30));
+                    }
+                    showToast(`已保存 ${successFiles.length} 个文件`, 'success');
+                    return;
+                }
+
+                // 回退：使用浏览器下载（无法强制指定文件夹）
+                successFiles.forEach(([name, file], index) => {
+                    setTimeout(() => {
+                        const number = getNextDownloadNumber();
+                        const newFileName = `${number}.webm`;
+                        const a = document.createElement('a');
+                        a.href = file.url;
+                        a.download = newFileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }, index * 500);
+                });
+                showToast(`开始下载 ${successFiles.length} 个文件`, 'success');
+
+            } catch (error) {
+                console.error('批量下载失败:', error);
+                showToast('批量下载失败，请重试', 'error');
+            }
+        }
+
+        // 文件操作函数
+        function removeFile(index) {
+            const file = selectedFiles[index];
+            if (file) {
+                // 清理URL对象
+                const processedFile = processedFiles.get(file.name);
+                if (processedFile && processedFile.url) {
+                    URL.revokeObjectURL(processedFile.url);
+                }
+                
+                selectedFiles.splice(index, 1);
+                processedFiles.delete(file.name);
+                displayFileList();
+                showToast('文件已移除', 'success');
+            }
+        }
+
+        function clearAllFiles() {
+            // 清理所有URL对象
+            processedFiles.forEach(file => {
+                if (file.url) {
+                    URL.revokeObjectURL(file.url);
+                }
+            });
+            
+            selectedFiles = [];
+            processedFiles.clear();
+            displayFileList();
+            
+            // 清理文件输入
+            document.getElementById('fileInput').value = '';
+            showToast('所有文件已清除', 'success');
+        }
+
+        function downloadFile(index) {
+            const file = selectedFiles[index];
+            if (!file) return;
+
+            const processedFile = processedFiles.get(file.name);
+            if (!processedFile || processedFile.status !== 'success') {
+                showToast('文件尚未处理完成', 'warning');
+                return;
+            }
+
+            // 创建下载链接
+            const a = document.createElement('a');
+            a.href = processedFile.url;
+            a.download = file.name.replace(/\.[^/.]+$/, '_transparent.webm');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            showToast('开始下载', 'success');
+        }
+
+        function downloadAll() {
+            const successFiles = Array.from(processedFiles.entries())
+                .filter(([name, file]) => file.status === 'success');
+
+            if (successFiles.length === 0) {
+                showToast('没有可下载的文件', 'warning');
+                return;
+            }
+
+            // 逐个下载文件
+            successFiles.forEach(([name, file], index) => {
+                setTimeout(() => {
+                    const a = document.createElement('a');
+                    a.href = file.url;
+                    a.download = name.replace(/\.[^/.]+$/, '_transparent.webm');
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }, index * 500); // 间隔500ms下载
+            });
+
+            showToast(`开始下载 ${successFiles.length} 个文件`, 'success');
+        }
+
+        function previewFile(index) {
+            const file = selectedFiles[index];
+            if (!file) return;
+
+            const processedFile = processedFiles.get(file.name);
+            if (!processedFile || processedFile.status !== 'success') {
+                showToast('文件尚未处理完成', 'warning');
+                return;
+            }
+
+            // 滚动到预览区域
+            const fileItem = document.getElementById(`file-${index}`);
+            const preview = fileItem.querySelector('.preview-video');
+            if (preview) {
+                preview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                preview.play();
+            }
+        }
+
+        // 通知系统
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 显示加载覆盖层
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('show');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('show');
+        }
+
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', function() {
+            processedFiles.forEach(file => {
+                if (file.url) {
+                    URL.revokeObjectURL(file.url);
+                }
+            });
+        });
+
+        // 诊断错误功能
+        function diagnoseError(index) {
+            const file = selectedFiles[index];
+            if (!file) return;
+
+            const processedFile = processedFiles.get(file.name);
+            if (!processedFile || processedFile.status !== 'error') return;
+
+            let diagnosis = [];
+            
+            // 检查文件基本信息
+            diagnosis.push(`📁 文件信息: ${file.name} (${formatFileSize(file.size)})`);
+            diagnosis.push(`📄 文件类型: ${file.type}`);
+            
+            // 检查浏览器支持
+            const supportedFormats = [];
+            ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].forEach(format => {
+                if (MediaRecorder.isTypeSupported(format)) {
+                    supportedFormats.push(format);
+                }
+            });
+            diagnosis.push(`🌐 支持格式: ${supportedFormats.join(', ')}`);
+            
+            // 检查错误类型
+            const error = processedFile.fullError || {};
+            diagnosis.push(`❌ 错误类型: ${error.name || '未知'}`);
+            diagnosis.push(`📝 错误信息: ${processedFile.error}`);
+            
+            // 提供解决建议
+            let suggestions = [];
+            
+            if (processedFile.error.includes('不支持')) {
+                suggestions.push('• 尝试使用 Chrome 浏览器（兼容性最好）');
+                suggestions.push('• 检查浏览器版本是否过低');
+            }
+            
+            if (processedFile.error.includes('加载失败')) {
+                suggestions.push('• 检查视频文件是否损坏');
+                suggestions.push('• 尝试转换为标准 MP4 格式');
+            }
+            
+            if (processedFile.error.includes('录制失败') || processedFile.error.includes('没有录制到数据')) {
+                suggestions.push('• 降低视频质量设置');
+                suggestions.push('• 尝试处理更短的视频');
+                suggestions.push('• 关闭其他占用内存的程序');
+            }
+            
+            if (file.size > 50 * 1024 * 1024) {
+                suggestions.push('• 文件过大，建议压缩后再处理');
+            }
+            
+            if (suggestions.length === 0) {
+                suggestions.push('• 尝试重新启动浏览器');
+                suggestions.push('• 尝试使用更小的测试视频');
+                suggestions.push('• 检查系统内存是否充足');
+            }
+            
+            diagnosis.push(`\n💡 解决建议:`);
+            diagnosis = diagnosis.concat(suggestions);
+            
+            // 显示诊断结果
+            const diagnosisText = diagnosis.join('\n');
+            lastDiagnosticInfo = diagnosisText;
+            
+            // 创建诊断窗口
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 3000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 600px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    margin: 20px;
+                ">
+                    <h3 style="margin-bottom: 16px; color: #333;">🔍 错误诊断报告</h3>
+                    <pre style="
+                        white-space: pre-wrap;
+                        background: #f8f9fa;
+                        padding: 16px;
+                        border-radius: 6px;
+                        font-size: 14px;
+                        line-height: 1.5;
+                        color: #333;
+                        margin-bottom: 16px;
+                    ">${diagnosisText}</pre>
+                    <div style="text-align: right;">
+                        <button class="btn" onclick="this.closest('[style*=fixed]').remove()">
+                            关闭
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 点击背景关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // 重试处理功能
+        function retryProcessing(index) {
+            const file = selectedFiles[index];
+            if (!file) return;
+            
+            // 清除之前的错误状态
+            processedFiles.delete(file.name);
+            
+            // 移除错误详情
+            const fileItem = document.getElementById(`file-${index}`);
+            const errorDetails = fileItem.querySelector('.error-details');
+            if (errorDetails) {
+                errorDetails.remove();
+            }
+            
+            // 重新开始处理
+            convertSingleFile(index);
+        }
+
+        // 系统诊断测试
+        function runDiagnosticTest() {
+            const results = [];
+            
+            // 测试浏览器基本功能
+            results.push('🌐 浏览器环境测试:');
+            results.push(`  • UserAgent: ${navigator.userAgent}`);
+            results.push(`  • Canvas支持: ${!!document.createElement('canvas').getContext('2d') ? '✅' : '❌'}`);
+            results.push(`  • MediaRecorder支持: ${!!window.MediaRecorder ? '✅' : '❌'}`);
+            results.push(`  • URL.createObjectURL支持: ${!!window.URL?.createObjectURL ? '✅' : '❌'}`);
+            
+            // 测试视频格式支持
+            results.push('\n🎥 视频格式支持测试:');
+            const testFormats = [
+                'video/webm;codecs=vp9',
+                'video/webm;codecs=vp8', 
+                'video/webm',
+                'video/mp4;codecs=h264',
+                'video/mp4'
+            ];
+            
+            testFormats.forEach(format => {
+                const supported = window.MediaRecorder && MediaRecorder.isTypeSupported(format);
+                results.push(`  • ${format}: ${supported ? '✅' : '❌'}`);
+            });
+            
+            // 测试内存和性能
+            results.push('\n💾 系统资源测试:');
+            if ('memory' in performance) {
+                const memory = performance.memory;
+                results.push(`  • 已用内存: ${Math.round(memory.usedJSHeapSize / 1024 / 1024)}MB`);
+                results.push(`  • 总内存: ${Math.round(memory.totalJSHeapSize / 1024 / 1024)}MB`);
+                results.push(`  • 内存限制: ${Math.round(memory.jsHeapSizeLimit / 1024 / 1024)}MB`);
+            } else {
+                results.push('  • 内存信息: 不可用');
+            }
+            
+            // 测试Canvas录制
+            results.push('\n🎬 Canvas录制测试:');
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = 320;
+                canvas.height = 240;
+                const stream = canvas.captureStream(15);
+                results.push(`  • Canvas.captureStream: ✅`);
+                
+                if (stream.getVideoTracks().length > 0) {
+                    results.push(`  • 视频轨道: ✅`);
+                } else {
+                    results.push(`  • 视频轨道: ❌`);
+                }
+            } catch (error) {
+                results.push(`  • Canvas.captureStream: ❌ (${error.message})`);
+            }
+            
+            // 建议和解决方案
+            results.push('\n💡 建议:');
+            
+            if (!window.MediaRecorder) {
+                results.push('  • 请使用支持MediaRecorder的现代浏览器');
+                results.push('  • 推荐: Chrome 85+, Firefox 80+, Safari 14+');
+            } else {
+                const hasWebM = MediaRecorder.isTypeSupported('video/webm');
+                if (!hasWebM) {
+                    results.push('  • 浏览器不支持WebM格式，功能可能受限');
+                }
+            }
+            
+            if ('memory' in performance) {
+                const memory = performance.memory;
+                const usedPercent = (memory.usedJSHeapSize / memory.jsHeapSizeLimit) * 100;
+                if (usedPercent > 80) {
+                    results.push('  • 内存使用率较高，建议关闭其他标签页');
+                }
+            }
+            
+            results.push('  • 如果处理失败，尝试使用更小的测试视频');
+            results.push('  • 建议视频文件 < 20MB，时长 < 10秒');
+            
+            // 显示测试结果
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 3000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 700px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    margin: 20px;
+                ">
+                    <h3 style="margin-bottom: 16px; color: #333;">🔧 系统诊断报告</h3>
+                    <pre style="
+                        white-space: pre-wrap;
+                        background: #f8f9fa;
+                        padding: 16px;
+                        border-radius: 6px;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        color: #333;
+                        margin-bottom: 16px;
+                        max-height: 400px;
+                        overflow-y: auto;
+                    ">${results.join('\n')}</pre>
+                    <div style="text-align: right;">
+                        <button class="btn secondary" onclick="copyDiagnosticInfo()" style="margin-right: 8px;">
+                            📋 复制报告
+                        </button>
+                        <button class="btn" onclick="this.closest('[style*=fixed]').remove()">
+                            关闭
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 点击背景关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // 存储诊断信息的全局变量
+        let lastDiagnosticInfo = '';
+
+        // 复制诊断信息
+        function copyDiagnosticInfo() {
+            if (!lastDiagnosticInfo) {
+                showToast('没有可复制的诊断信息', 'error');
+                return;
+            }
+            
+            navigator.clipboard.writeText(lastDiagnosticInfo).then(() => {
+                showToast('诊断报告已复制到剪贴板', 'success');
+            }).catch(() => {
+                // 备用方法
+                const textArea = document.createElement('textarea');
+                textArea.value = lastDiagnosticInfo;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast('诊断报告已复制', 'success');
+            });
+        }
+
+        // 测试上传功能
+        function testUploadFunction() {
+            const results = [];
+            
+            results.push('🔍 上传功能测试:');
+            
+            // 检查DOM元素
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+            
+            results.push(`  • 上传区域元素: ${uploadArea ? '✅ 找到' : '❌ 未找到'}`);
+            results.push(`  • 文件输入元素: ${fileInput ? '✅ 找到' : '❌ 未找到'}`);
+            
+            if (uploadArea) {
+                results.push(`  • 上传区域可见: ${uploadArea.offsetParent !== null ? '✅' : '❌'}`);
+                results.push(`  • 上传区域尺寸: ${uploadArea.offsetWidth}x${uploadArea.offsetHeight}`);
+                
+                const computedStyle = window.getComputedStyle(uploadArea);
+                results.push(`  • cursor样式: ${computedStyle.cursor}`);
+                results.push(`  • pointer-events: ${computedStyle.pointerEvents}`);
+                results.push(`  • z-index: ${computedStyle.zIndex}`);
+            }
+            
+            if (fileInput) {
+                results.push(`  • 文件输入类型: ${fileInput.type}`);
+                results.push(`  • accept属性: ${fileInput.accept}`);
+                results.push(`  • multiple属性: ${fileInput.multiple ? '✅' : '❌'}`);
+            }
+            
+            // 检查事件监听器
+            results.push('\n🎯 事件监听器测试:');
+            
+            if (uploadArea) {
+                // 模拟点击测试
+                try {
+                    const clickEvent = new MouseEvent('click', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    });
+                    
+                    results.push('  • 准备模拟点击测试...');
+                    
+                    // 临时添加测试监听器
+                    let clickDetected = false;
+                    const testHandler = () => {
+                        clickDetected = true;
+                        results.push('  • 点击事件: ✅ 检测到');
+                    };
+                    
+                    uploadArea.addEventListener('click', testHandler, { once: true });
+                    uploadArea.dispatchEvent(clickEvent);
+                    
+                    setTimeout(() => {
+                        if (!clickDetected) {
+                            results.push('  • 点击事件: ❌ 未检测到');
+                        }
+                        
+                        // 显示测试结果
+                        displayTestResults(results);
+                    }, 100);
+                    
+                } catch (error) {
+                    results.push(`  • 点击测试错误: ${error.message}`);
+                    displayTestResults(results);
+                }
+            } else {
+                displayTestResults(results);
+            }
+        }
+
+        function displayTestResults(results) {
+            // 添加建议
+            results.push('\n💡 解决建议:');
+            results.push('  • 如果上传区域无法点击，请尝试:');
+            results.push('    - 刷新页面');
+            results.push('    - 检查浏览器控制台错误');
+            results.push('    - 尝试直接点击文件选择按钮');
+            results.push('  • 如果拖拽不工作，请尝试:');
+            results.push('    - 确保拖拽的是视频文件');
+            results.push('    - 检查文件格式 (MP4, MOV, WebM)');
+            
+            // 显示测试结果窗口
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 3000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="
+                    background: white;
+                    padding: 24px;
+                    border-radius: 12px;
+                    max-width: 600px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    margin: 20px;
+                ">
+                    <h3 style="margin-bottom: 16px; color: #333;">🔍 上传功能测试报告</h3>
+                    <pre style="
+                        white-space: pre-wrap;
+                        background: #f8f9fa;
+                        padding: 16px;
+                        border-radius: 6px;
+                        font-size: 13px;
+                        line-height: 1.4;
+                        color: #333;
+                        margin-bottom: 16px;
+                        max-height: 400px;
+                        overflow-y: auto;
+                    ">${results.join('\n')}</pre>
+                    <div style="text-align: right;">
+                        <button class="btn secondary" onclick="forceOpenFileDialog()" style="margin-right: 8px;">
+                            📁 强制打开文件选择
+                        </button>
+                        <button class="btn" onclick="this.closest('[style*=fixed]').remove()">
+                            关闭
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 点击背景关闭
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // 强制打开文件对话框
+        function forceOpenFileDialog() {
+            console.log('强制触发文件选择对话框');
+            triggerFileSelection();
+            showToast('已尝试打开文件选择对话框', 'info');
+        }
+
+        // 键盘快捷键
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'o':
+                        e.preventDefault();
+                        triggerFileSelection();
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        if (selectedFiles.length > 0) {
+                            convertAllFiles();
+                        }
+                        break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
